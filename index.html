@@ -495,237 +495,205 @@ function processImage(file) {
   reader.readAsDataURL(file);
 }
 
+// ========== 新算法：径向扫描 → 找数据多边形边界 → 提取顶点 ==========
 function analyzeRadarChart(img, callback) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  const size = 600;
-  canvas.width = size;
-  canvas.height = size;
-  ctx.drawImage(img, 0, 0, size, size);
+  const SIZE = 600;
+  canvas.width = SIZE;
+  canvas.height = SIZE;
+  ctx.drawImage(img, 0, 0, SIZE, SIZE);
 
-  const imageData = ctx.getImageData(0, 0, size, size);
+  const imageData = ctx.getImageData(0, 0, SIZE, SIZE);
   const data = imageData.data;
 
-  // 步骤1: 找到中心点（通过检测同心结构的中心）
-  const center = findCenter(ctx, size);
+  // 步骤1: 采样背景色（四角区域）
+  const bg = sampleBackground(data, SIZE);
 
-  // 步骤2: 检测轴线角度
-  const axes = detectAxes(ctx, center.x, center.y, size);
+  // 步骤2: 从图像中心开始，径向扫描找每条射线上的边界
+  const cx = SIZE / 2;
+  const cy = SIZE / 2;
+  const NUM_RAYS = 720; // 0.5度分辨率
+  const scanDist = SIZE * 0.43;
+  const edgeFn = new Float32Array(NUM_RAYS); // 每条射线的边界距离
 
-  // 步骤3: 检测数据点
-  const values = detectDataPoints(ctx, center.x, center.y, axes, size);
-
-  // 步骤4: 推断维度名称
-  const dimensions = inferDimensionNames(axes.length);
-
-  callback({
-    dimCount: axes.length,
-    dimensions,
-    values,
-    axes,
-    center
-  });
-}
-
-function findCenter(ctx, size) {
-  // 通过检测图像中心附近的低变化区域来定位中心
-  const cx = Math.floor(size / 2);
-  const cy = Math.floor(size / 2);
-
-  // 在中心区域搜索最"对称"的点
-  let bestX = cx, bestY = cy;
-  let bestScore = -1;
-
-  const searchRange = 80;
-  for (let dx = -searchRange; dx <= searchRange; dx += 4) {
-    for (let dy = -searchRange; dy <= searchRange; dy += 4) {
-      const x = cx + dx;
-      const y = cy + dy;
-      const score = computeRadialSymmetry(ctx, x, y, size);
-      if (score > bestScore) {
-        bestScore = score;
-        bestX = x;
-        bestY = y;
-      }
-    }
+  for (let i = 0; i < NUM_RAYS; i++) {
+    const angle = (i * 2 * Math.PI) / NUM_RAYS;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    edgeFn[i] = findEdge(data, SIZE, Math.floor(cx), Math.floor(cy), cos, sin, scanDist, bg);
   }
 
-  // 精细搜索
-  let fineX = bestX, fineY = bestY;
-  bestScore = -1;
-  for (let dx = -6; dx <= 6; dx++) {
-    for (let dy = -6; dy <= 6; dy++) {
-      const x = bestX + dx;
-      const y = bestY + dy;
-      const score = computeRadialSymmetry(ctx, x, y, size);
-      if (score > bestScore) {
-        bestScore = score;
-        fineX = x;
-        fineY = y;
-      }
-    }
-  }
+  // 步骤3: 平滑边界函数
+  smooth1D(edgeFn, 3);
 
-  return { x: fineX, y: fineY };
-}
+  // 步骤4: 找顶点（边界函数的局部极大值）
+  const rawVertices = findVertices(edgeFn, NUM_RAYS, scanDist);
 
-function computeRadialSymmetry(ctx, cx, cy, size) {
-  let score = 0;
-  const radii = [30, 60, 90, 120];
-  const samples = 24;
+  // 步骤5: 过滤 + 排序
+  const vertices = filterAndSortVertices(rawVertices, NUM_RAYS, edgeFn);
 
-  radii.forEach(r => {
-    for (let i = 0; i < samples; i++) {
-      const angle1 = (i * 2 * Math.PI) / samples;
-      const angle2 = ((i + samples/2) * 2 * Math.PI) / samples;
-      const x1 = Math.floor(cx + r * Math.cos(angle1));
-      const y1 = Math.floor(cy + r * Math.sin(angle1));
-      const x2 = Math.floor(cx + r * Math.cos(angle2));
-      const y2 = Math.floor(cy + r * Math.sin(angle2));
+  const axes = vertices.map(v => ({
+    angle: (v.idx / NUM_RAYS) * 360,
+    confidence: Math.round(v.confidence * 100) / 100
+  }));
 
-      if (x1 >= 0 && x1 < size && y1 >= 0 && y1 < size &&
-          x2 >= 0 && x2 < size && y2 >= 0 && y2 < size) {
-        const p1 = ctx.getImageData(x1, y1, 1, 1).data;
-        const p2 = ctx.getImageData(x2, y2, 1, 1).data;
-        const diff = Math.abs(p1[0]-p2[0]) + Math.abs(p1[1]-p2[1]) + Math.abs(p1[2]-p2[2]);
-        score += 255 * 3 - diff;
-      }
-    }
-  });
+  const maxDist = scanDist * 0.76;
+  const minDist = scanDist * 0.05;
+  const values = vertices.map(v =>
+    Math.min(100, Math.max(0, Math.round(((v.dist - minDist) / (maxDist - minDist)) * 100)))
+  );
 
-  return score;
-}
-
-function detectAxes(ctx, cx, cy, size) {
-  const angles = [];
-  const maxRadius = size * 0.42;
-  const step = 2; // 角度步长
-
-  for (let deg = 0; deg < 360; deg += step) {
-    const rad = (deg * Math.PI) / 180;
-    let darkPixels = 0;
-    let totalBrightness = 0;
-    let sampleCount = 0;
-
-    for (let r = 15; r < maxRadius; r += 3) {
-      const x = Math.floor(cx + r * Math.cos(rad));
-      const y = Math.floor(cy + r * Math.sin(rad));
-      if (x < 0 || x >= size || y < 0 || y >= size) continue;
-
-      const pixel = ctx.getImageData(x, y, 1, 1).data;
-      const brightness = (pixel[0] + pixel[1] + pixel[2]) / 3;
-      totalBrightness += brightness;
-      sampleCount++;
-
-      // 检测线条：与周围像素有显著差异
-      if (r > 20) {
-        const px1 = Math.floor(cx + (r-2) * Math.cos(rad));
-        const py1 = Math.floor(cy + (r-2) * Math.sin(rad));
-        const px2 = Math.floor(cx + (r+2) * Math.cos(rad));
-        const py2 = Math.floor(cy + (r+2) * Math.sin(rad));
-        if (px1 >= 0 && px1 < size && py1 >= 0 && py1 < size &&
-            px2 >= 0 && px2 < size && py2 >= 0 && py2 < size) {
-          const p1 = ctx.getImageData(px1, py1, 1, 1).data;
-          const p2 = ctx.getImageData(px2, py2, 1, 1).data;
-          const b1 = (p1[0]+p1[1]+p1[2])/3;
-          const b2 = (p2[0]+p2[1]+p2[2])/3;
-          if (Math.abs(b1 - b2) > 30) darkPixels++;
-        }
-      }
-    }
-
-    const avgBrightness = totalBrightness / sampleCount;
-    // 轴线特征：有较多边缘像素，且整体不是全白
-    if (darkPixels > 8 && avgBrightness < 200) {
-      angles.push(deg);
-    }
-  }
-
-  // 聚类找到主要的轴线角度
-  const clusters = [];
-  if (angles.length === 0) {
-    return [];
-  }
-
-  let currentCluster = [angles[0]];
-  for (let i = 1; i < angles.length; i++) {
-    if (angles[i] - angles[i-1] < 20) {
-      currentCluster.push(angles[i]);
-    } else {
-      clusters.push(currentCluster);
-      currentCluster = [angles[i]];
-    }
-  }
-  if (currentCluster.length > 0) clusters.push(currentCluster);
-
-  // 过滤太小的簇，计算每个簇的中心角度
-  const validClusters = clusters
-    .filter(c => c.length >= 3)
-    .map(c => ({
-      angle: c.reduce((a, b) => a + b, 0) / c.length,
-      confidence: Math.min(1, c.length / 20)
-    }));
-
-  return validClusters;
-}
-
-function detectDataPoints(ctx, cx, cy, axes, size) {
-  const maxRadius = size * 0.38;
-  const values = [];
-
-  axes.forEach((axis, idx) => {
-    const rad = (axis.angle * Math.PI) / 180;
-    let bestR = 0;
-    let bestScore = -1;
-
-    // 沿轴线扫描，寻找数据点（颜色突变或高饱和度区域）
-    for (let r = 10; r < maxRadius; r += 1) {
-      const x = Math.floor(cx + r * Math.cos(rad));
-      const y = Math.floor(cy + r * Math.sin(rad));
-      if (x < 2 || x >= size-2 || y < 2 || y >= size-2) continue;
-
-      const pixel = ctx.getImageData(x, y, 1, 1).data;
-      const brightness = (pixel[0] + pixel[1] + pixel[2]) / 3;
-
-      // 检测数据点特征：与背景有明显差异的彩色像素
-      // 计算饱和度
-      const max = Math.max(pixel[0], pixel[1], pixel[2]);
-      const min = Math.min(pixel[0], pixel[1], pixel[2]);
-      const saturation = max === 0 ? 0 : (max - min) / max;
-
-      // 检测边缘强度
-      const left = ctx.getImageData(x-2, y, 1, 1).data;
-      const right = ctx.getImageData(x+2, y, 1, 1).data;
-      const edgeStrength = Math.abs(brightness - (left[0]+left[1]+left[2])/3) +
-                           Math.abs(brightness - (right[0]+right[1]+right[2])/3);
-
-      // 数据点通常是彩色且与背景对比强烈的
-      let score = 0;
-      if (saturation > 0.3) score += saturation * 50;
-      if (edgeStrength > 30) score += edgeStrength;
-
-      // 对于深色背景图，数据点通常较亮
-      if (brightness > 80) score += brightness * 0.3;
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestR = r;
-      }
-    }
-
-    // 转换为 0-100
-    const value = Math.min(100, Math.max(0, Math.round((bestR / maxRadius) * 100)));
-    values.push(value);
-  });
-
-  return values;
-}
-
-function inferDimensionNames(count) {
-  return Array.from({length: count}, (_, i) => `维度${i+1}`).map(name => ({
+  const dimensions = Array.from({length: vertices.length}, (_, i) => `维度${i+1}`).map(name => ({
     name,
     detected: false
   }));
+
+  callback({
+    dimCount: vertices.length,
+    dimensions,
+    values,
+    axes,
+    center: { x: cx, y: cy }
+  });
+}
+
+function sampleBackground(data, size) {
+  const corners = [
+    [0, 0], [size - 2, 0], [0, size - 2], [size - 2, size - 2],
+    [size / 2, 0], [size - 1, size / 2], [size / 2, size - 1], [0, size / 2]
+  ];
+  let rSum = 0, gSum = 0, bSum = 0;
+  const w = 5;
+  corners.forEach(([cx, cy]) => {
+    for (let dx = 0; dx < w; dx++) {
+      for (let dy = 0; dy < w; dy++) {
+        const x = Math.min(size - 1, Math.max(0, cx + dx - 2));
+        const y = Math.min(size - 1, Math.max(0, cy + dy - 2));
+        const off = (y * size + x) * 4;
+        rSum += data[off];
+        gSum += data[off + 1];
+        bSum += data[off + 2];
+      }
+    }
+  });
+  const n = corners.length * w * w;
+  return { r: rSum / n, g: gSum / n, b: bSum / n };
+}
+
+function colorDist(c1, c2) {
+  return Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2 + (c1[2] - c2[2]) ** 2);
+}
+
+function findEdge(data, size, cx, cy, cos, sin, maxR, bg) {
+  let prevDist = -1;
+  let maxDist = 0;
+  let bestR = 0;
+  let bestScore = -1;
+
+  for (let r = 10; r < maxR; r++) {
+    const x = Math.floor(cx + r * cos);
+    const y = Math.floor(cy + r * sin);
+    if (x < 1 || x >= size - 1 || y < 1 || y >= size - 1) break;
+
+    const off = (y * size + x) * 4;
+    const pr = data[off], pg = data[off + 1], pb = data[off + 2];
+    const d = colorDist([pr, pg, pb], [bg.r, bg.g, bg.b]);
+
+    if (prevDist >= 0) {
+      const delta = d - prevDist;
+      if (delta > maxDist) maxDist = delta;
+    }
+
+    // 综合评分：颜色距背景远 + 梯度变化大
+    const score = d * 0.6 + maxDist * 2;
+    if (score > bestScore) {
+      bestScore = score;
+      bestR = r;
+    }
+
+    prevDist = d;
+  }
+
+  return bestR;
+}
+
+function smooth1D(arr, windowSize) {
+  const tmp = new Float32Array(arr.length);
+  for (let i = 0; i < arr.length; i++) {
+    let sum = 0;
+    let count = 0;
+    for (let w = -windowSize; w <= windowSize; w++) {
+      let idx = i + w;
+      if (idx < 0) idx += arr.length;
+      if (idx >= arr.length) idx -= arr.length;
+      sum += arr[idx];
+      count++;
+    }
+    tmp[i] = sum / count;
+  }
+  for (let i = 0; i < arr.length; i++) arr[i] = tmp[i];
+}
+
+function findVertices(edgeFn, numRays, maxDist) {
+  const peaks = [];
+  const minHeight = maxDist * 0.12;
+  const half = Math.floor(numRays / 2);
+
+  for (let i = 0; i < numRays; i++) {
+    const cur = edgeFn[i];
+    if (cur < minHeight) continue;
+
+    // 向前后各检查15个点确认局部极大值
+    let isPeak = true;
+    for (let d = 1; d <= 15; d++) {
+      const prev = edgeFn[(i - d + numRays) % numRays];
+      const next = edgeFn[(i + d) % numRays];
+      if (prev >= cur || next >= cur) { isPeak = false; break; }
+    }
+    if (!isPeak) continue;
+
+    // 估算置信度 = 峰值强度 / 平均值
+    let sum = 0;
+    let cnt = 0;
+    for (let d = 1; d <= 10; d++) {
+      sum += edgeFn[(i - d + numRays) % numRays];
+      sum += edgeFn[(i + d) % numRays];
+      cnt += 2;
+    }
+    const meanNeighbor = sum / cnt;
+    const confidence = meanNeighbor > 0 ? (cur - meanNeighbor) / cur : 0;
+
+    peaks.push({ idx: i, dist: cur, confidence });
+  }
+
+  return peaks;
+}
+
+function filterAndSortVertices(peaks, numRays, edgeFn) {
+  if (peaks.length < 3) return peaks;
+
+  // 按指标排序
+  peaks.sort((a, b) => b.confidence - a.confidence);
+
+  // 贪心选点：保留置信度高的，去除间隔太近的
+  const selected = [];
+  const minGap = Math.floor(numRays / 24); // 至少间隔15度
+
+  for (const p of peaks) {
+    let tooClose = false;
+    for (const s of selected) {
+      let gap = Math.abs(p.idx - s.idx);
+      if (gap > numRays / 2) gap = numRays - gap;
+      if (gap < minGap) { tooClose = true; break; }
+    }
+    if (!tooClose) selected.push(p);
+  }
+
+  // 按角度排序
+  selected.sort((a, b) => a.idx - b.idx);
+
+  return selected;
 }
 
 // ================ OCR 预览与校正 ================
