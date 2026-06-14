@@ -495,7 +495,19 @@ function processImage(file) {
   reader.readAsDataURL(file);
 }
 
-// ========== 多策略检测引擎 ==========
+// ========== v4: HSV饱和度分割 + Tesseract.js OCR ==========
+let tesseractReady = false;
+
+// 预加载 Tesseract（轻量）
+(function preloadOCR() {
+  if (typeof Tesseract !== 'undefined') { tesseractReady = true; return; }
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+  s.onload = () => { tesseractReady = true; };
+  s.onerror = () => { console.warn('Tesseract.js 加载失败'); };
+  document.head.appendChild(s);
+})();
+
 function analyzeRadarChart(img, callback) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -503,152 +515,103 @@ function analyzeRadarChart(img, callback) {
   canvas.width = SIZE;
   canvas.height = SIZE;
   ctx.drawImage(img, 0, 0, SIZE, SIZE);
-  const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
+  const imgData = ctx.getImageData(0, 0, SIZE, SIZE);
+  const data = imgData.data;
 
-  const cx = SIZE / 2;
-  const cy = SIZE / 2;
-  const NUM_RAYS = 720;
-  const maxR = SIZE * 0.45;
-  const edgeFn = new Float32Array(NUM_RAYS);
-
-  // 策略1: 中心采样识别填充色 → 追踪填充色边界
-  const fillColor = sampleCenterColor(data, SIZE, 40);
-  const bgColor = sampleCorners(data, SIZE);
-  const fillVsBg = colorDist2(fillColor, bgColor);
-
-  // 策略2: 同时做梯度扫描作为备用
-  let useGradient = fillVsBg < 25;
-
-  for (let i = 0; i < NUM_RAYS; i++) {
-    const angle = (i * 2 * Math.PI) / NUM_RAYS;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    edgeFn[i] = useGradient
-      ? findGradientBoundary(data, SIZE, cx, cy, cos, sin, maxR)
-      : findFillBoundary(data, SIZE, cx, cy, cos, sin, maxR, fillColor);
+  // --- 核心：HSV 饱和度掩膜 ---
+  // 雷达图数据多边形通常有颜色（高饱和度），网格/背景是灰白（低饱和度）
+  const satMask = new Uint8Array(SIZE * SIZE);
+  let satTotal = 0, satCount = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const s = max === 0 ? 0 : (max - min) / max;
+    satMask[i >> 2] = s > 0.08 ? 1 : 0; // 低阈值，捕获浅色填充
+    if (i >> 2 < SIZE * SIZE) { satTotal += s; satCount++; }
   }
+  const avgSat = satTotal / satCount;
 
-  // 如果填充色策略结果太差，改用梯度策略
-  const avgBoundary = edgeFn.reduce((a, b) => a + b, 0) / NUM_RAYS;
-  if (!useGradient && avgBoundary < 20) {
-    for (let i = 0; i < NUM_RAYS; i++) {
-      edgeFn[i] = findGradientBoundary(data, SIZE, cx, cy,
-        Math.cos((i * 2 * Math.PI) / NUM_RAYS),
-        Math.sin((i * 2 * Math.PI) / NUM_RAYS), maxR);
+  // 如果整张图饱和度极低（灰度图），换亮度通道
+  if (avgSat < 0.03) {
+    for (let i = 0; i < data.length; i += 4) {
+      const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      satMask[i >> 2] = gray < 128 ? 1 : 0; // 暗色像素 = 可能的数据区域
     }
   }
 
-  // 平滑
-  smooth1D(edgeFn, 5);
+  // --- 径向扫描：找最远的高饱和度/暗像素 ---
+  const cx = SIZE / 2, cy = SIZE / 2;
+  const NUM_RAYS = 720;
+  const maxR = SIZE * 0.46;
+  const edgeFn = new Float32Array(NUM_RAYS);
 
-  // 自适应找顶点
-  const vertices = detectVerticesRobust(edgeFn, NUM_RAYS, maxR);
+  for (let i = 0; i < NUM_RAYS; i++) {
+    const angle = (i * 2 * Math.PI) / NUM_RAYS;
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    let farthest = 0;
+
+    for (let r = 5; r < maxR; r++) {
+      const x = Math.floor(cx + r * cos);
+      const y = Math.floor(cy + r * sin);
+      if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) break;
+      if (satMask[y * SIZE + x]) farthest = r;
+    }
+    edgeFn[i] = farthest;
+  }
+
+  // --- 平滑 ---
+  smooth1D(edgeFn, 6);
+
+  // --- 找顶点 ---
+  const vertices = detectVertices(edgeFn, NUM_RAYS, maxR);
 
   const axes = vertices.map(v => ({
     angle: (v.idx / NUM_RAYS) * 360,
     confidence: Math.round(v.score * 100) / 100
   }));
 
-  const values = vertices.map(v => {
-    const pct = (v.dist - 8) / (maxR * 0.78 - 8);
-    return Math.min(100, Math.max(0, Math.round(pct * 100)));
-  });
+  const values = vertices.map(v =>
+    Math.min(100, Math.max(0, Math.round((v.dist / (maxR * 0.80)) * 100)))
+  );
 
   const dimensions = Array.from({length: vertices.length}, (_, i) => `维度${i+1}`).map(n => ({
-    name: n,
-    detected: false
+    name: n, detected: false
   }));
 
-  callback({ dimCount: vertices.length, dimensions, values, axes, center: { x: cx, y: cy } });
-}
+  const result = { dimCount: vertices.length, dimensions, values, axes, center: { x: cx, y: cy } };
 
-function colorDist2(c1, c2) {
-  const dr = c1.r - c2.r, dg = c1.g - c2.g, db = c1.b - c2.b;
-  return Math.sqrt(dr * dr + dg * dg + db * db);
-}
-
-function sampleCorners(data, size) {
-  let r = 0, g = 0, b = 0, n = 0;
-  const margin = 10;
-  const w = 8;
-  [[margin, margin], [size - margin, margin], [margin, size - margin], [size - margin, size - margin]].forEach(([cx, cy]) => {
-    for (let dx = -w; dx <= w; dx++) {
-      for (let dy = -w; dy <= w; dy++) {
-        const x = Math.min(size - 1, Math.max(0, cx + dx));
-        const y = Math.min(size - 1, Math.max(0, cy + dy));
-        const off = (y * size + x) * 4;
-        r += data[off]; g += data[off + 1]; b += data[off + 2]; n++;
-      }
-    }
-  });
-  return { r: r / n, g: g / n, b: b / n };
-}
-
-function sampleCenterColor(data, size, radius) {
-  let r = 0, g = 0, b = 0, n = 0;
-  const cx = size / 2, cy = size / 2;
-  for (let dx = -radius; dx <= radius; dx++) {
-    for (let dy = -radius; dy <= radius; dy++) {
-      if (dx * dx + dy * dy > radius * radius) continue;
-      const x = Math.floor(cx + dx);
-      const y = Math.floor(cy + dy);
-      const off = (y * size + x) * 4;
-      r += data[off]; g += data[off + 1]; b += data[off + 2]; n++;
-    }
+  // --- 尝试 Tesseract OCR 提取标签文字 ---
+  if (tesseractReady && vertices.length >= 3) {
+    runOCR(img, result).then(() => callback(result));
+  } else {
+    callback(result);
   }
-  return { r: r / n, g: g / n, b: b / n };
 }
 
-function findFillBoundary(data, size, cx, cy, cos, sin, maxR, fillColor) {
-  let bestR = 0;
-  let inside = true;
-  let streak = 0; // 连续"出界"的步数
+async function runOCR(img, result) {
+  try {
+    const worker = await Tesseract.createWorker('chi_sim+eng', 1, {
+      logger: () => {}
+    });
+    const { data: { text } } = await worker.recognize(img);
+    await worker.terminate();
 
-  for (let r = 5; r < maxR; r++) {
-    const x = Math.floor(cx + r * cos);
-    const y = Math.floor(cy + r * sin);
-    if (x < 0 || x >= size || y < 0 || y >= size) break;
-    const off = (y * size + x) * 4;
-    const dist = colorDist2({ r: data[off], g: data[off + 1], b: data[off + 2] }, fillColor);
+    // 提取识别的词（中英文 + 数字）
+    const words = text.match(/[\u4e00-\u9fff\w]+/g) || [];
+    // 过滤太短的
+    const labels = words.filter(w => w.length >= 2 && !/^\d+$/.test(w));
+    // 去重
+    const unique = [...new Set(labels)];
 
-    if (dist < 55) {
-      inside = true;
-      streak = 0;
-    } else if (inside || streak > 4) {
-      streak++;
-      if (streak >= 8) {
-        bestR = r - 8;
-        break;
-      }
+    if (unique.length >= result.dimCount) {
+      // 只取前 N 个词作为维度名
+      result.dimensions = unique.slice(0, result.dimCount).map((name, i) => ({
+        name, detected: true
+      }));
     }
+  } catch (e) {
+    console.warn('OCR失败:', e);
   }
-  return bestR || 5;
-}
-
-function findGradientBoundary(data, size, cx, cy, cos, sin, maxR) {
-  let bestR = 0;
-  let bestGrad = -1;
-  let prev = null;
-
-  for (let r = 5; r < maxR; r++) {
-    const x = Math.floor(cx + r * cos);
-    const y = Math.floor(cy + r * sin);
-    if (x < 2 || x >= size - 2 || y < 2 || y >= size - 2) break;
-    const off = (y * size + x) * 4;
-    const cur = [data[off], data[off + 1], data[off + 2]];
-
-    if (prev) {
-      const grad = Math.abs(cur[0] - prev[0]) + Math.abs(cur[1] - prev[1]) + Math.abs(cur[2] - prev[2]);
-      // 取靠外侧的最强梯度
-      const score = grad * (1 + r / maxR);
-      if (score > bestGrad) {
-        bestGrad = score;
-        bestR = r;
-      }
-    }
-    prev = cur;
-  }
-  return bestR || 5;
 }
 
 function smooth1D(arr, windowSize) {
@@ -666,76 +629,73 @@ function smooth1D(arr, windowSize) {
   arr.set(tmp);
 }
 
-function detectVerticesRobust(edgeFn, numRays, maxR) {
-  // 计算自适应阈值
-  let total = 0;
-  for (let i = 0; i < numRays; i++) total += edgeFn[i];
-  const mean = total / numRays;
-  const minVal = Math.max(10, mean * 0.5);
+function detectVertices(edgeFn, numRays, maxR) {
+  // 计算边界均值
+  let total = 0, validCnt = 0;
+  for (let i = 0; i < numRays; i++) {
+    if (edgeFn[i] > 5) { total += edgeFn[i]; validCnt++; }
+  }
+  const mean = validCnt > 0 ? total / validCnt : 0;
+  const minVal = Math.max(8, mean * 0.45);
 
-  // 找所有局部极大值
-  const candidates = [];
-  const neighborhood = 12;
+  // 找局部极大值
+  const cand = [];
+  const nb = 10;
   for (let i = 0; i < numRays; i++) {
     const cur = edgeFn[i];
     if (cur < minVal) continue;
     let isPeak = true;
-    for (let d = 1; d <= neighborhood; d++) {
-      const prev = edgeFn[(i - d + numRays) % numRays];
-      const next = edgeFn[(i + d) % numRays];
-      if (prev > cur || next > cur) { isPeak = false; break; }
+    for (let d = 1; d <= nb; d++) {
+      if (edgeFn[(i - d + numRays) % numRays] >= cur ||
+          edgeFn[(i + d) % numRays] >= cur) { isPeak = false; break; }
     }
     if (!isPeak) continue;
 
-    // 计算峰凸出度
+    // 凸出度
     let basin = Infinity;
     for (let side = -1; side <= 1; side += 2) {
-      for (let d = neighborhood + 2; d <= 30; d++) {
+      for (let d = nb + 1; d <= 25; d++) {
         const idx = (i + side * d + numRays) % numRays;
         if (edgeFn[idx] < basin) basin = edgeFn[idx];
       }
     }
     const prominence = cur - basin;
-    const score = prominence / (cur + 1);
-    if (score > 0.08) {
-      candidates.push({ idx: i, dist: cur, score });
-    }
+    if (prominence > 5) cand.push({ idx: i, dist: cur, score: prominence / (cur + 1) });
   }
 
-  if (candidates.length === 0) return [];
+  if (cand.length === 0) return [];
 
-  // 按得分排序，贪心去重
-  candidates.sort((a, b) => b.score - a.score);
-  const selected = [];
-  const minGap = Math.floor(numRays / 18);
-
-  for (const c of candidates) {
-    let tooClose = false;
-    for (const s of selected) {
-      let gap = Math.abs(c.idx - s.idx);
-      if (gap > numRays / 2) gap = numRays - gap;
-      if (gap < minGap) { tooClose = true; break; }
-    }
-    if (!tooClose) selected.push(c);
+  // 贪心选点
+  cand.sort((a, b) => b.score - a.score);
+  const sel = [];
+  const gap = Math.floor(numRays / 20);
+  for (const c of cand) {
+    if (sel.some(s => {
+      let d = Math.abs(c.idx - s.idx);
+      if (d > numRays / 2) d = numRays - d;
+      return d < gap;
+    })) continue;
+    sel.push(c);
   }
 
-  selected.sort((a, b) => a.idx - b.idx);
-  return selected;
+  sel.sort((a, b) => a.idx - b.idx);
+  return sel;
 }
 
 // ================ OCR 预览与校正 ================
 function showOCRPreview(result, imgDataUrl) {
   const previewDiv = document.getElementById('ocr-preview');
+  const anyDetected = result.dimensions.some(d => d.detected);
 
   let html = '<div style="margin-top:8px;">';
   html += `<img src="${imgDataUrl}" class="preview-img" />`;
   html += '<div class="ocr-result">';
-  html += `<div class="title">识别结果（共 ${result.dimCount} 维）— 可滑动校正</div>`;
+  html += `<div class="title">识别结果（共 ${result.dimCount} 维）${anyDetected ? ' — AI文字识别' : ''} — 可手动编辑</div>`;
 
   result.dimensions.forEach((dim, i) => {
     const val = result.values[i] || 0;
     html += `<div class="item">
-      <span class="name">${dim.name}</span>
+      <input type="text" value="${dim.name}" onchange="ocrResult.dimensions[${i}].name=this.value" style="border:1px solid #d2d2d7;border-radius:6px;padding:4px 8px;font-size:13px;width:110px;margin-right:8px;">
       <div style="display:flex;align-items:center;">
         <input type="range" min="0" max="100" value="${val}"
           oninput="ocrResult.values[${i}]=parseInt(this.value);this.nextElementSibling.textContent=this.value;renderOCRPreviewChart()" />
