@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>闆疯揪鍥剧敓鎴愬櫒</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #f5f5f7;
+  color: #1d1d1f;
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 380px;
+  min-width: 380px;
+  background: #ffffff;
+  border-right: 1px solid #e5e5ea;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e5ea;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+.sidebar-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin-bottom: 4px;
+}
+.sidebar-header p { font-size: 12px; color: #86868b; }
+
+.sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group { display: flex; flex-direction: column; gap: 8px; }
+.form-group label { font-size: 12px; color: #86868b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+.form-group input, .form-group select, .form-group textarea {
+  background: #f5f5f7;
+  border: 1px solid #d2d2d7;
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #1d1d1f;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: #0071e3;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0,113,227,0.1);
+}
+.form-group input::placeholder, .form-group textarea::placeholder { color: #c7c7cc; }
+.form-row { display: flex; gap: 10px; align-items: center; }
+.form-row .form-group { flex: 1; }
+
+.btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+}
+.btn-primary { background: #0071e3; color: #fff; }
+.btn-primary:hover { background: #0077ed; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,113,227,0.25); }
+.btn-danger { background: #ff3b30; color: #fff; }
+.btn-danger:hover { background: #e6352b; }
+.btn-outline { background: #f5f5f7; border: 1px solid #d2d2d7; color: #1d1d1f; }
+.btn-outline:hover { border-color: #0071e3; color: #0071e3; background: #ffffff; }
+.btn-success { background: #34c759; color: #fff; }
+.btn-success:hover { background: #30b350; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-block { width: 100%; }
+
+.graph-area {
+  flex: 1;
+  position: relative;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.graph-area svg { max-width: 100%; max-height: 100%; }
+
+.graph-toolbar {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 5;
+}
+.graph-toolbar button {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  border: 1px solid #e5e5ea;
+  background: rgba(255,255,255,0.95);
+  color: #86868b;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.graph-toolbar button:hover { border-color: #0071e3; color: #0071e3; }
+
+.dim-list { max-height: 280px; overflow-y: auto; }
+.dim-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #f5f5f7;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.dim-item .idx { width: 20px; text-align: center; color: #0071e3; font-weight: 700; font-size: 11px; }
+.dim-item input[type="text"] {
+  flex: 1;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: #1d1d1f;
+  font-size: 13px;
+  outline: none;
+}
+.dim-item input[type="text"]:focus { border-color: #0071e3; background: #ffffff; }
+.dim-item input[type="range"] { flex: 1; accent-color: #0071e3; }
+.dim-item .val { width: 32px; text-align: right; font-size: 12px; color: #0071e3; font-weight: 600; }
+.dim-item .del-btn {
+  background: none; border: none; color: #ff3b30; cursor: pointer;
+  font-size: 14px; padding: 2px 6px; border-radius: 4px;
+}
+.dim-item .del-btn:hover { background: rgba(255,59,48,0.08); }
+
+.dataset-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.dataset-tab {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #e5e5ea;
+  background: #f5f5f7;
+  color: #86868b;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dataset-tab:hover { border-color: #0071e3; }
+.dataset-tab.active { border-color: transparent; color: #fff; }
+.dataset-tab .close { font-size: 11px; opacity: 0.5; }
+.dataset-tab .close:hover { opacity: 1; }
+
+.color-picker {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.color-opt {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+.color-opt:hover { transform: scale(1.1); }
+.color-opt.selected { border-color: #1d1d1f; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #0071e3; }
+
+.upload-area {
+  border: 2px dashed #d2d2d7;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #f5f5f7;
+}
+.upload-area:hover {
+  border-color: #0071e3;
+  background: #ffffff;
+}
+.upload-area.dragover {
+  border-color: #0071e3;
+  background: rgba(0,113,227,0.05);
+}
+.upload-area .icon { font-size: 32px; margin-bottom: 8px; }
+.upload-area .text { font-size: 13px; color: #86868b; }
+.upload-area .sub { font-size: 11px; color: #c7c7cc; margin-top: 4px; }
+
+.ocr-result {
+  background: #f5f5f7;
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 8px;
+}
+.ocr-result .title {
+  font-size: 12px;
+  color: #86868b;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.ocr-result .item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #e5e5ea;
+  font-size: 13px;
+}
+.ocr-result .item:last-child { border-bottom: none; }
+.ocr-result .item .name { color: #1d1d1f; }
+.ocr-result .item .val { color: #0071e3; font-weight: 600; min-width: 36px; text-align: right; }
+.ocr-result .item input[type="range"] {
+  width: 80px;
+  margin-left: 8px;
+  accent-color: #0071e3;
+}
+
+.tooltip {
+  position: absolute;
+  background: rgba(255,255,255,0.98);
+  border: 1px solid #e5e5ea;
+  border-radius: 12px;
+  padding: 12px 16px;
+  pointer-events: none;
+  font-size: 13px;
+  backdrop-filter: blur(20px);
+  display: none;
+  z-index: 20;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+.tooltip .title { font-weight: 700; margin-bottom: 4px; }
+.tooltip .val { color: #86868b; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d2d2d7; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #86868b; }
+
+.empty-state {
+  text-align: center;
+  color: #c7c7cc;
+  padding: 40px 20px;
+}
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state .text { font-size: 14px; }
+
+.loading {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e5ea;
+  border-top-color: #0071e3;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#file-input { display: none; }
+
+.preview-img {
+  max-width: 100%;
+  max-height: 120px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>闆疯揪鍥剧敓鎴愬櫒</h1>
+    <p>Radar Chart Generator</p>
+  </div>
+  <div class="sidebar-body">
+
+    <!-- 鏅鸿兘璇嗗埆瀵煎叆 -->
+    <div class="form-group">
+      <label>馃摲 鏅鸿兘璇嗗埆瀵煎叆</label>
+      <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
+        <div class="icon">馃摛</div>
+        <div class="text">鐐瑰嚮鎴栨嫋鎷戒笂浼犻浄杈惧浘鍥剧墖</div>
+        <div class="sub">鑷姩璇嗗埆缁村害鍚嶇О鍜屾暟鍊硷紝鏀寔鎵嬪姩鏍℃</div>
+      </div>
+      <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
+      <div id="ocr-status"></div>
+      <div id="ocr-preview"></div>
+    </div>
+
+    <!-- 鏁版嵁闆嗗垏鎹?-->
+    <div class="form-group">
+      <label>馃搳 鏁版嵁绯诲垪</label>
+      <div class="dataset-tabs" id="dataset-tabs"></div>
+      <button class="btn btn-outline btn-sm btn-block" onclick="addDataset()">娣诲姞鏁版嵁绯诲垪</button>
+    </div>
+
+    <!-- 褰撳墠鏁版嵁闆嗙紪杈?-->
+    <div class="form-group">
+      <label>鉁忥笍 褰撳墠绯诲垪鍚嶇О</label>
+      <input id="ds-name" placeholder="杈撳叆绯诲垪鍚嶇О" onchange="updateDatasetName(this.value)" />
+    </div>
+
+    <div class="form-group">
+      <label>馃帹 绯诲垪棰滆壊</label>
+      <div class="color-picker" id="color-picker"></div>
+    </div>
+
+    <div class="form-group">
+      <label>馃搻 缁村害鏁伴噺</label>
+      <div class="form-row">
+        <input type="number" id="dim-count" value="0" min="3" max="12" placeholder="缁村害鏁? onchange="changeDimCount(this.value)" />
+        <button class="btn btn-outline btn-sm" onclick="randomizeValues()">闅忔満濉厖</button>
+        <button class="btn btn-danger btn-sm" onclick="clearDataset()">娓呯┖鏁板€?/button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>馃搵 缁村害鍚嶇О涓庢暟鍊?(0-100)</label>
+      <div class="dim-list" id="dim-list"></div>
+    </div>
+
+    <div class="form-group">
+      <label>鈿欙笍 鏄剧ず閫夐」</label>
+      <div class="form-row" style="font-size:13px;gap:16px;color:#86868b;">
+        <label><input type="checkbox" id="show-fill" checked onchange="render()"> 濉厖</label>
+        <label><input type="checkbox" id="show-points" checked onchange="render()"> 鑺傜偣</label>
+        <label><input type="checkbox" id="show-grid" checked onchange="render()"> 缃戞牸</label>
+        <label><input type="checkbox" id="show-labels" checked onchange="render()"> 鏍囩</label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>馃捑 瀵煎嚭</label>
+      <button class="btn btn-primary btn-block" onclick="exportPNG()">瀵煎嚭 PNG</button>
+      <button class="btn btn-primary btn-block" onclick="exportSVG()">瀵煎嚭 SVG</button>
+      <button class="btn btn-outline btn-block" onclick="exportJSON()">瀵煎嚭 JSON</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="graph-area" id="graph">
+  <div class="graph-toolbar">
+    <button title="閫傚簲灞忓箷" onclick="fitView()">鈯?/button>
+  </div>
+  <div class="tooltip" id="tooltip"></div>
+</div>
+
+<script>
+const COLORS = [
+  '#0071e3','#34c759','#ff9500','#ff3b30','#af52de',
+  '#5856d6','#ff2d55','#5ac8fa','#ffcc00','#a2845e',
+  '#64d2ff','#30d158','#ff375f','#bf5af2','#0a84ff'
+];
+
+let datasets = [];
+let activeIdx = 0;
+let ocrResult = null;
+
+function initUI() {
+  const cp = document.getElementById('color-picker');
+  cp.innerHTML = COLORS.map((c, i) =>
+    `<div class="color-opt${i===0?' selected':''}" style="background:${c}" data-color="${c}" onclick="selectColor('${c}',this)"></div>`
+  ).join('');
+
+  updateDatasetTabs();
+  updateDimList();
+  render();
+
+  const uploadArea = document.getElementById('upload-area');
+  uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+  });
+  uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+  });
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) processImage(files[0]);
+  });
+}
+
+function updateDatasetTabs() {
+  const tabs = document.getElementById('dataset-tabs');
+  if (datasets.length === 0) {
+    tabs.innerHTML = '';
+    return;
+  }
+  tabs.innerHTML = datasets.map((ds, i) => {
+    const isActive = i === activeIdx;
+    return `<div class="dataset-tab${isActive?' active':''}" style="${isActive?'background:'+ds.color:''}" onclick="switchDataset(${i})">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ds.color}"></span>
+      ${ds.name}
+      ${datasets.length>1?`<span class="close" onclick="event.stopPropagation();removeDataset(${i})">鉁?/span>`:''}
+    </div>`;
+  }).join('');
+}
+
+function updateDimList() {
+  if (datasets.length === 0) {
+    document.getElementById('ds-name').value = '';
+    document.getElementById('dim-count').value = 0;
+    document.getElementById('dim-list').innerHTML = '<div class="empty-state"><div class="icon">馃搳</div><div class="text">鐐瑰嚮銆屾坊鍔犳暟鎹郴鍒椼€嶆垨涓婁紶鍥剧墖寮€濮?/div></div>';
+    return;
+  }
+
+  const ds = datasets[activeIdx];
+  document.getElementById('ds-name').value = ds.name;
+  document.getElementById('dim-count').value = ds.dims.length;
+
+  document.querySelectorAll('.color-opt').forEach(el => {
+    el.classList.toggle('selected', el.dataset.color === ds.color);
+  });
+
+  const list = document.getElementById('dim-list');
+  if (ds.dims.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">馃搻</div><div class="text">璁剧疆缁村害鏁伴噺鍚庡紑濮嬫坊鍔犳暟鎹?/div></div>';
+    return;
+  }
+
+  list.innerHTML = ds.dims.map((d, i) => `
+    <div class="dim-item">
+      <span class="idx">${i+1}</span>
+      <input type="text" value="${d.name}" placeholder="缁村害鍚嶇О" onchange="updateDimName(${i},this.value)" />
+      <input type="range" min="0" max="100" value="${d.value}" oninput="updateDimValue(${i},this.value);this.nextElementSibling.textContent=this.value" />
+      <span class="val">${d.value}</span>
+      ${ds.dims.length>3?`<button class="del-btn" onclick="removeDim(${i})">鉁?/button>`:''}
+    </div>
+  `).join('');
+}
+
+// ================ 鍥剧墖璇嗗埆锛堟牳蹇冪畻娉曪級 ================
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (file) processImage(file);
+}
+
+function processImage(file) {
+  const statusDiv = document.getElementById('ocr-status');
+  const previewDiv = document.getElementById('ocr-preview');
+
+  statusDiv.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;color:#0071e3;"><span class="loading"></span>姝ｅ湪鍒嗘瀽鍥剧墖...</div>';
+  previewDiv.innerHTML = '';
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      analyzeRadarChart(img, (result) => {
+        statusDiv.innerHTML = '<div style="padding:8px 0;color:#34c759;">鉁?璇嗗埆瀹屾垚锛屽彲鎵嬪姩鏍℃鍚庡簲鐢?/div>';
+        ocrResult = result;
+        showOCRPreview(result, e.target.result);
+      });
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function analyzeRadarChart(img, callback) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const size = 600;
+  canvas.width = size;
+  canvas.height = size;
+  ctx.drawImage(img, 0, 0, size, size);
+
+  const imageData = ctx.getImageData(0, 0, size, size);
+  const data = imageData.data;
+
+  // 姝ラ1: 鎵惧埌涓績鐐癸紙閫氳繃妫€娴嬪悓蹇冪粨鏋勭殑涓績锛?  const center = findCenter(ctx, size);
+
+  // 姝ラ2: 妫€娴嬭酱绾胯搴?  const axes = detectAxes(ctx, center.x, center.y, size);
+
+  // 姝ラ3: 妫€娴嬫暟鎹偣
+  const values = detectDataPoints(ctx, center.x, center.y, axes, size);
+
+  // 姝ラ4: 鎺ㄦ柇缁村害鍚嶇О
+  const dimensions = inferDimensionNames(axes.length);
+
+  callback({
+    dimCount: axes.length,
+    dimensions,
+    values,
+    axes,
+    center
+  });
+}
+
+function findCenter(ctx, size) {
+  // 閫氳繃妫€娴嬪浘鍍忎腑蹇冮檮杩戠殑浣庡彉鍖栧尯鍩熸潵瀹氫綅涓績
+  const cx = Math.floor(size / 2);
+  const cy = Math.floor(size / 2);
+
+  // 鍦ㄤ腑蹇冨尯鍩熸悳绱㈡渶"瀵圭О"鐨勭偣
+  let bestX = cx, bestY = cy;
+  let bestScore = -1;
+
+  const searchRange = 80;
+  for (let dx = -searchRange; dx <= searchRange; dx += 4) {
+    for (let dy = -searchRange; dy <= searchRange; dy += 4) {
+      const x = cx + dx;
+      const y = cy + dy;
+      const score = computeRadialSymmetry(ctx, x, y, size);
+      if (score > bestScore) {
+        bestScore = score;
+        bestX = x;
+        bestY = y;
+      }
+    }
+  }
+
+  // 绮剧粏鎼滅储
+  let fineX = bestX, fineY = bestY;
+  bestScore = -1;
+  for (let dx = -6; dx <= 6; dx++) {
+    for (let dy = -6; dy <= 6; dy++) {
+      const x = bestX + dx;
+      const y = bestY + dy;
+      const score = computeRadialSymmetry(ctx, x, y, size);
+      if (score > bestScore) {
+        bestScore = score;
+        fineX = x;
+        fineY = y;
+      }
+    }
+  }
+
+  return { x: fineX, y: fineY };
+}
+
+function computeRadialSymmetry(ctx, cx, cy, size) {
+  let score = 0;
+  const radii = [30, 60, 90, 120];
+  const samples = 24;
+
+  radii.forEach(r => {
+    for (let i = 0; i < samples; i++) {
+      const angle1 = (i * 2 * Math.PI) / samples;
+      const angle2 = ((i + samples/2) * 2 * Math.PI) / samples;
+      const x1 = Math.floor(cx + r * Math.cos(angle1));
+      const y1 = Math.floor(cy + r * Math.sin(angle1));
+      const x2 = Math.floor(cx + r * Math.cos(angle2));
+      const y2 = Math.floor(cy + r * Math.sin(angle2));
+
+      if (x1 >= 0 && x1 < size && y1 >= 0 && y1 < size &&
+          x2 >= 0 && x2 < size && y2 >= 0 && y2 < size) {
+        const p1 = ctx.getImageData(x1, y1, 1, 1).data;
+        const p2 = ctx.getImageData(x2, y2, 1, 1).data;
+        const diff = Math.abs(p1[0]-p2[0]) + Math.abs(p1[1]-p2[1]) + Math.abs(p1[2]-p2[2]);
+        score += 255 * 3 - diff;
+      }
+    }
+  });
+
+  return score;
+}
+
+function detectAxes(ctx, cx, cy, size) {
+  const angles = [];
+  const maxRadius = size * 0.42;
+  const step = 2; // 瑙掑害姝ラ暱
+
+  for (let deg = 0; deg < 360; deg += step) {
+    const rad = (deg * Math.PI) / 180;
+    let darkPixels = 0;
+    let totalBrightness = 0;
+    let sampleCount = 0;
+
+    for (let r = 15; r < maxRadius; r += 3) {
+      const x = Math.floor(cx + r * Math.cos(rad));
+      const y = Math.floor(cy + r * Math.sin(rad));
+      if (x < 0 || x >= size || y < 0 || y >= size) continue;
+
+      const pixel = ctx.getImageData(x, y, 1, 1).data;
+      const brightness = (pixel[0] + pixel[1] + pixel[2]) / 3;
+      totalBrightness += brightness;
+      sampleCount++;
+
+      // 妫€娴嬬嚎鏉★細涓庡懆鍥村儚绱犳湁鏄捐憲宸紓
+      if (r > 20) {
+        const px1 = Math.floor(cx + (r-2) * Math.cos(rad));
+        const py1 = Math.floor(cy + (r-2) * Math.sin(rad));
+        const px2 = Math.floor(cx + (r+2) * Math.cos(rad));
+        const py2 = Math.floor(cy + (r+2) * Math.sin(rad));
+        if (px1 >= 0 && px1 < size && py1 >= 0 && py1 < size &&
+            px2 >= 0 && px2 < size && py2 >= 0 && py2 < size) {
+          const p1 = ctx.getImageData(px1, py1, 1, 1).data;
+          const p2 = ctx.getImageData(px2, py2, 1, 1).data;
+          const b1 = (p1[0]+p1[1]+p1[2])/3;
+          const b2 = (p2[0]+p2[1]+p2[2])/3;
+          if (Math.abs(b1 - b2) > 30) darkPixels++;
+        }
+      }
+    }
+
+    const avgBrightness = totalBrightness / sampleCount;
+    // 杞寸嚎鐗瑰緛锛氭湁杈冨杈圭紭鍍忕礌锛屼笖鏁翠綋涓嶆槸鍏ㄧ櫧
+    if (darkPixels > 8 && avgBrightness < 200) {
+      angles.push(deg);
+    }
+  }
+
+  // 鑱氱被鎵惧埌涓昏鐨勮酱绾胯搴?  const clusters = [];
+  if (angles.length === 0) {
+    //  fallback: 鍋囪7缁?    for (let i = 0; i < 7; i++) {
+      clusters.push([i * 360 / 7 - 90]);
+    }
+    return clusters.map(c => ({ angle: c[0], confidence: 0.5 }));
+  }
+
+  let currentCluster = [angles[0]];
+  for (let i = 1; i < angles.length; i++) {
+    if (angles[i] - angles[i-1] < 20) {
+      currentCluster.push(angles[i]);
+    } else {
+      clusters.push(currentCluster);
+      currentCluster = [angles[i]];
+    }
+  }
+  if (currentCluster.length > 0) clusters.push(currentCluster);
+
+  // 杩囨护澶皬鐨勭皣锛岃绠楁瘡涓皣鐨勪腑蹇冭搴?  const validClusters = clusters
+    .filter(c => c.length >= 3)
+    .map(c => ({
+      angle: c.reduce((a, b) => a + b, 0) / c.length,
+      confidence: Math.min(1, c.length / 20)
+    }));
+
+  // 濡傛灉妫€娴嬪埌鐨勭淮搴﹀お灏戯紝鐢ㄥ父瑙佺淮搴︽暟 fallback
+  if (validClusters.length < 3) {
+    const fallbackCount = 7;
+    return Array.from({length: fallbackCount}, (_, i) => ({
+      angle: i * 360 / fallbackCount - 90,
+      confidence: 0.3
+    }));
+  }
+
+  return validClusters;
+}
+
+function detectDataPoints(ctx, cx, cy, axes, size) {
+  const maxRadius = size * 0.38;
+  const values = [];
+
+  axes.forEach((axis, idx) => {
+    const rad = (axis.angle * Math.PI) / 180;
+    let bestR = 0;
+    let bestScore = -1;
+
+    // 娌胯酱绾挎壂鎻忥紝瀵绘壘鏁版嵁鐐癸紙棰滆壊绐佸彉鎴栭珮楗卞拰搴﹀尯鍩燂級
+    for (let r = 10; r < maxRadius; r += 1) {
+      const x = Math.floor(cx + r * Math.cos(rad));
+      const y = Math.floor(cy + r * Math.sin(rad));
+      if (x < 2 || x >= size-2 || y < 2 || y >= size-2) continue;
+
+      const pixel = ctx.getImageData(x, y, 1, 1).data;
+      const brightness = (pixel[0] + pixel[1] + pixel[2]) / 3;
+
+      // 妫€娴嬫暟鎹偣鐗瑰緛锛氫笌鑳屾櫙鏈夋槑鏄惧樊寮傜殑褰╄壊鍍忕礌
+      // 璁＄畻楗卞拰搴?      const max = Math.max(pixel[0], pixel[1], pixel[2]);
+      const min = Math.min(pixel[0], pixel[1], pixel[2]);
+      const saturation = max === 0 ? 0 : (max - min) / max;
+
+      // 妫€娴嬭竟缂樺己搴?      const left = ctx.getImageData(x-2, y, 1, 1).data;
+      const right = ctx.getImageData(x+2, y, 1, 1).data;
+      const edgeStrength = Math.abs(brightness - (left[0]+left[1]+left[2])/3) +
+                           Math.abs(brightness - (right[0]+right[1]+right[2])/3);
+
+      // 鏁版嵁鐐归€氬父鏄僵鑹蹭笖涓庤儗鏅姣斿己鐑堢殑
+      let score = 0;
+      if (saturation > 0.3) score += saturation * 50;
+      if (edgeStrength > 30) score += edgeStrength;
+
+      // 瀵逛簬娣辫壊鑳屾櫙鍥撅紝鏁版嵁鐐归€氬父杈冧寒
+      if (brightness > 80) score += brightness * 0.3;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestR = r;
+      }
+    }
+
+    // 杞崲涓?0-100
+    const value = Math.min(100, Math.max(0, Math.round((bestR / maxRadius) * 100)));
+    values.push(value);
+  });
+
+  return values;
+}
+
+function inferDimensionNames(count) {
+  // 甯歌闆疯揪鍥剧淮搴﹀悕绉板簱
+  const libraries = {
+    3: ['缁村害A', '缁村害B', '缁村害C'],
+    4: ['缁村害A', '缁村害B', '缁村害C', '缁村害D'],
+    5: ['寮€鏀炬€?, '灏借矗鎬?, '澶栧悜鎬?, '瀹滀汉鎬?, '绁炵粡璐?],
+    6: ['鍔涢噺', '鏁忔嵎', '鏅哄姏', '浣撳姏', '榄呭姏', '骞歌繍'],
+    7: ['鍌叉參', '瀚夊', '璐┆', '鑹叉', '鎳掓儼', '鏆撮', '鏆存€?],
+    8: ['鏀诲嚮', '闃插尽', '鐢熷懡', '閫熷害', '鏆村嚮', '闂伩', '鍛戒腑', '鎶楁€?],
+    9: ['缁村害1', '缁村害2', '缁村害3', '缁村害4', '缁村害5', '缁村害6', '缁村害7', '缁村害8', '缁村害9'],
+    10: ['缁村害1', '缁村害2', '缁村害3', '缁村害4', '缁村害5', '缁村害6', '缁村害7', '缁村害8', '缁村害9', '缁村害10'],
+    11: Array.from({length: 11}, (_, i) => `缁村害${i+1}`),
+    12: Array.from({length: 12}, (_, i) => `缁村害${i+1}`),
+  };
+
+  return (libraries[count] || Array.from({length: count}, (_, i) => `缁村害${i+1}`)).map(name => ({
+    name,
+    detected: false
+  }));
+}
+
+// ================ OCR 棰勮涓庢牎姝?================
+function showOCRPreview(result, imgDataUrl) {
+  const previewDiv = document.getElementById('ocr-preview');
+
+  let html = '<div style="margin-top:8px;">';
+  html += `<img src="${imgDataUrl}" class="preview-img" />`;
+  html += '<div class="ocr-result">';
+  html += `<div class="title">璇嗗埆缁撴灉锛堝叡 ${result.dimCount} 缁达級鈥?鍙粦鍔ㄦ牎姝?/div>`;
+
+  result.dimensions.forEach((dim, i) => {
+    const val = result.values[i] || 0;
+    html += `<div class="item">
+      <span class="name">${dim.name}</span>
+      <div style="display:flex;align-items:center;">
+        <input type="range" min="0" max="100" value="${val}"
+          oninput="ocrResult.values[${i}]=parseInt(this.value);this.nextElementSibling.textContent=this.value;renderOCRPreviewChart()" />
+        <span class="val" style="margin-left:6px;">${val}</span>
+      </div>
+    </div>`;
+  });
+
+  html += '</div>';
+  html += `<button class="btn btn-success btn-block" style="margin-top:10px;" onclick="applyOCRResult()">搴旂敤璇嗗埆缁撴灉</button>`;
+  html += `<button class="btn btn-outline btn-block" style="margin-top:6px;" onclick="clearOCRResult()">娓呴櫎</button>`;
+  html += '</div>';
+
+  previewDiv.innerHTML = html;
+
+  // 娓叉煋涓€涓皬鐨勯瑙堝浘
+  renderOCRPreviewChart();
+}
+
+function renderOCRPreviewChart() {
+  if (!ocrResult) return;
+  // 棰勮鍥惧凡缁忓湪涓诲浘鍖哄煙閫氳繃 render() 鏄剧ず
+}
+
+function applyOCRResult() {
+  if (!ocrResult) return;
+
+  const usedColors = datasets.map(d => d.color);
+  const color = COLORS.find(c => !usedColors.includes(c)) || COLORS[0];
+
+  const newDataset = {
+    name: `璇嗗埆鏁版嵁${datasets.length + 1}`,
+    color: color,
+    dims: ocrResult.dimensions.map((dim, i) => ({
+      name: dim.name,
+      value: ocrResult.values[i] || 0
+    }))
+  };
+
+  datasets.push(newDataset);
+  activeIdx = datasets.length - 1;
+
+  updateDatasetTabs();
+  updateDimList();
+  render();
+
+  document.getElementById('ocr-preview').innerHTML = '';
+  document.getElementById('ocr-status').innerHTML = '<div style="padding:8px 0;color:#34c759;">鉁?宸插簲鐢ㄥ埌鍥捐〃</div>';
+}
+
+function clearOCRResult() {
+  ocrResult = null;
+  document.getElementById('ocr-preview').innerHTML = '';
+  document.getElementById('ocr-status').innerHTML = '';
+  document.getElementById('file-input').value = '';
+}
+
+// ================ 鏁版嵁鎿嶄綔 ================
+function switchDataset(idx) {
+  activeIdx = idx;
+  updateDatasetTabs();
+  updateDimList();
+  render();
+}
+
+function addDataset() {
+  const usedColors = datasets.map(d => d.color);
+  const color = COLORS.find(c => !usedColors.includes(c)) || COLORS[datasets.length % COLORS.length];
+  const dimCount = datasets.length > 0 ? datasets[0].dims.length : 0;
+  let dims = [];
+  if (dimCount > 0) {
+    for (let i = 0; i < dimCount; i++) {
+      const baseName = datasets[0].dims[i]?.name || `缁村害${i+1}`;
+      dims.push({ name: baseName, value: 0 });
+    }
+  }
+  datasets.push({ name: `绯诲垪${datasets.length+1}`, color, dims });
+  activeIdx = datasets.length - 1;
+  updateDatasetTabs();
+  updateDimList();
+  render();
+}
+
+function removeDataset(idx) {
+  if (datasets.length <= 1) {
+    datasets = [];
+    activeIdx = 0;
+  } else {
+    datasets.splice(idx, 1);
+    if (activeIdx >= datasets.length) activeIdx = datasets.length - 1;
+  }
+  updateDatasetTabs();
+  updateDimList();
+  render();
+}
+
+function updateDatasetName(name) {
+  if (datasets.length === 0) return;
+  datasets[activeIdx].name = name.trim() || '鏈懡鍚?;
+  updateDatasetTabs();
+}
+
+function selectColor(color, el) {
+  if (datasets.length === 0) return;
+  datasets[activeIdx].color = color;
+  document.querySelectorAll('.color-opt').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  updateDatasetTabs();
+  render();
+}
+
+function changeDimCount(count) {
+  if (datasets.length === 0) {
+    alert('璇峰厛娣诲姞涓€涓暟鎹郴鍒?);
+    document.getElementById('dim-count').value = 0;
+    return;
+  }
+  count = Math.max(3, Math.min(12, parseInt(count) || 3));
+  datasets.forEach(ds => {
+    while (ds.dims.length < count) {
+      ds.dims.push({ name: `缁村害${ds.dims.length+1}`, value: 0 });
+    }
+    while (ds.dims.length > count) {
+      ds.dims.pop();
+    }
+  });
+  updateDimList();
+  render();
+}
+
+function updateDimName(idx, name) {
+  if (datasets.length === 0) return;
+  const val = name.trim() || `缁村害${idx+1}`;
+  datasets.forEach(ds => {
+    if (ds.dims[idx]) ds.dims[idx].name = val;
+  });
+  render();
+}
+
+function updateDimValue(idx, val) {
+  if (datasets.length === 0) return;
+  datasets[activeIdx].dims[idx].value = Math.max(0, Math.min(100, parseInt(val) || 0));
+  render();
+}
+
+function removeDim(idx) {
+  if (datasets.length === 0) return;
+  if (datasets[0].dims.length <= 3) return alert('鑷冲皯闇€瑕?涓淮搴?);
+  datasets.forEach(ds => ds.dims.splice(idx, 1));
+  updateDimList();
+  render();
+}
+
+function randomizeValues() {
+  if (datasets.length === 0) return;
+  datasets[activeIdx].dims.forEach(d => d.value = Math.floor(Math.random() * 90) + 10);
+  updateDimList();
+  render();
+}
+
+function clearDataset() {
+  if (datasets.length === 0) return;
+  datasets[activeIdx].dims.forEach(d => d.value = 0);
+  updateDimList();
+  render();
+}
+
+// ================ 娓叉煋 ================
+function render() {
+  const container = document.getElementById('graph');
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+
+  const toolbar = container.querySelector('.graph-toolbar');
+  const tooltip = container.querySelector('.tooltip');
+
+  if (datasets.length === 0 || datasets[0].dims.length === 0) {
+    container.innerHTML = '';
+    container.appendChild(toolbar);
+    container.appendChild(tooltip);
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = '<div class="icon" style="font-size:64px;margin-bottom:16px;">馃搳</div><div style="font-size:16px;color:#86868b;">鐐瑰嚮宸︿晶銆屾坊鍔犳暟鎹郴鍒椼€嶆垨涓婁紶鍥剧墖寮€濮?/div>';
+    empty.style.cssText = 'text-align:center;color:#c7c7cc;';
+    container.appendChild(empty);
+    return;
+  }
+
+  const size = Math.min(w, h) * 0.72;
+  const cx = w / 2;
+  const cy = h / 2;
+  const radius = size / 2 - 50;
+  const levels = 5;
+
+  const showFill = document.getElementById('show-fill').checked;
+  const showPoints = document.getElementById('show-points').checked;
+  const showGrid = document.getElementById('show-grid').checked;
+  const showLabels = document.getElementById('show-labels').checked;
+
+  const dimNames = datasets[0].dims.map(d => d.name);
+  const dimCount = dimNames.length;
+  const angleStep = (Math.PI * 2) / dimCount;
+
+  let svg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<rect width="${w}" height="${h}" fill="#ffffff"/>`;
+
+  if (showGrid) {
+    for (let i = 1; i <= levels; i++) {
+      const r = (radius / levels) * i;
+      let points = '';
+      for (let j = 0; j < dimCount; j++) {
+        const angle = j * angleStep - Math.PI / 2;
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
+        points += `${x},${y} `;
+      }
+      svg += `<polygon points="${points}" fill="none" stroke="#e5e5ea" stroke-width="1"/>`;
+    }
+    for (let j = 0; j < dimCount; j++) {
+      const angle = j * angleStep - Math.PI / 2;
+      const x = cx + radius * Math.cos(angle);
+      const y = cy + radius * Math.sin(angle);
+      svg += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e5e5ea" stroke-width="1"/>`;
+    }
+    for (let i = 1; i <= levels; i++) {
+      const r = (radius / levels) * i;
+      svg += `<text x="${cx+5}" y="${cy-r+5}" fill="#c7c7cc" font-size="10" font-family="sans-serif">${Math.round(i*100/levels)}</text>`;
+    }
+  }
+
+  datasets.forEach((ds, dsi) => {
+    if (!ds.dims || ds.dims.length !== dimCount) return;
+    let points = '';
+    const pts = [];
+    for (let j = 0; j < dimCount; j++) {
+      const angle = j * angleStep - Math.PI / 2;
+      const val = Math.max(0, Math.min(100, ds.dims[j]?.value || 0));
+      const r = (val / 100) * radius;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      points += `${x},${y} `;
+      pts.push({x, y, val, name: ds.dims[j]?.name, angle});
+    }
+
+    if (showFill) {
+      svg += `<polygon points="${points}" fill="${ds.color}" fill-opacity="0.15" stroke="none"/>`;
+    }
+    svg += `<polygon points="${points}" fill="none" stroke="${ds.color}" stroke-width="2.5"/>`;
+
+    if (showPoints) {
+      pts.forEach((p, pi) => {
+        svg += `<circle cx="${p.x}" cy="${p.y}" r="5" fill="${ds.color}" stroke="#ffffff" stroke-width="2.5"
+          onmouseenter="showTip(evt,'${ds.name}','${p.name}',${p.val},'${ds.color}')"
+          onmouseleave="hideTip()"/>`;
+      });
+    }
+  });
+
+  if (showLabels) {
+    for (let j = 0; j < dimCount; j++) {
+      const angle = j * angleStep - Math.PI / 2;
+      const labelR = radius + 32;
+      const x = cx + labelR * Math.cos(angle);
+      const y = cy + labelR * Math.sin(angle);
+      const anchor = Math.abs(Math.cos(angle)) < 0.3 ? 'middle' : (Math.cos(angle) > 0 ? 'start' : 'end');
+      svg += `<text x="${x}" y="${y+4}" fill="#1d1d1f" font-size="14" font-weight="600" text-anchor="${anchor}" font-family="sans-serif">${dimNames[j]}</text>`;
+    }
+  }
+
+  const legendY = 30;
+  datasets.forEach((ds, i) => {
+    const lx = w - 170;
+    const ly = legendY + i * 26;
+    svg += `<rect x="${lx}" y="${ly-7}" width="12" height="12" rx="3" fill="${ds.color}"/>`;
+    svg += `<text x="${lx+18}" y="${ly+3}" fill="#1d1d1f" font-size="12" font-family="sans-serif">${ds.name}</text>`;
+  });
+
+  svg += `</svg>`;
+  container.innerHTML = '';
+  container.appendChild(toolbar);
+  container.appendChild(tooltip);
+  container.insertAdjacentHTML('beforeend', svg);
+}
+
+function showTip(evt, dsName, dimName, val, color) {
+  const tip = document.getElementById('tooltip');
+  tip.style.display = 'block';
+  tip.innerHTML = `<div class="title" style="color:${color}">${dsName}</div><div class="val">${dimName}: <b>${val}</b></div>`;
+  tip.style.left = (evt.clientX + 15) + 'px';
+  tip.style.top = (evt.clientY - 15) + 'px';
+}
+
+function hideTip() {
+  document.getElementById('tooltip').style.display = 'none';
+}
+
+// ================ 瀵煎嚭 ================
+function exportPNG() {
+  const container = document.getElementById('graph');
+  const svgEl = container.querySelector('svg');
+  if (!svgEl) return alert('娌℃湁鍙鍑虹殑鍥捐〃');
+  const serializer = new XMLSerializer();
+  const svgStr = serializer.serializeToString(svgEl);
+  const canvas = document.createElement('canvas');
+  const rect = container.getBoundingClientRect();
+  canvas.width = rect.width * 2;
+  canvas.height = rect.height * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+
+  const img = new Image();
+  const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  img.onload = () => {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, rect.width, rect.height);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(b => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = 'radar-chart.png';
+      a.click();
+    });
+  };
+  img.src = url;
+}
+
+function exportSVG() {
+  const svgEl = document.getElementById('graph').querySelector('svg');
+  if (!svgEl) return alert('娌℃湁鍙鍑虹殑鍥捐〃');
+  const serializer = new XMLSerializer();
+  let svgStr = serializer.serializeToString(svgEl);
+  svgStr = svgStr.replace(/&nbsp;/g, '&#160;');
+  downloadFile('radar-chart.svg', svgStr, 'image/svg+xml');
+}
+
+function exportJSON() {
+  if (datasets.length === 0) return alert('娌℃湁鍙鍑虹殑鏁版嵁');
+  const data = datasets.map(ds => ({
+    name: ds.name,
+    color: ds.color,
+    dims: ds.dims.map(d => ({ name: d.name, value: d.value }))
+  }));
+  downloadFile('radar-chart.json', JSON.stringify(data, null, 2), 'application/json');
+}
+
+function downloadFile(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function fitView() {
+  render();
+}
+
+window.addEventListener('resize', () => {
+  render();
+});
+
+initUI();
+</script>
+</body>
+</html>
