@@ -515,77 +515,111 @@ function analyzeRadarChart(img, callback) {
   canvas.width = SIZE;
   canvas.height = SIZE;
   ctx.drawImage(img, 0, 0, SIZE, SIZE);
-  const imgData = ctx.getImageData(0, 0, SIZE, SIZE);
-  const data = imgData.data;
+  const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
 
-  // --- 核心：HSV 饱和度掩膜 ---
-  // 雷达图数据多边形通常有颜色（高饱和度），网格/背景是灰白（低饱和度）
-  const satMask = new Uint8Array(SIZE * SIZE);
-  let satTotal = 0, satCount = 0;
+  // 预计算每个像素的饱和度和亮度
+  const satCache = new Float32Array(SIZE * SIZE);
+  const lumCache = new Float32Array(SIZE * SIZE);
   for (let i = 0; i < data.length; i += 4) {
-    const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+    const idx = i >> 2;
+    const r = data[i], g = data[i + 1], b = data[i + 2];
     const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    const s = max === 0 ? 0 : (max - min) / max;
-    satMask[i >> 2] = s > 0.08 ? 1 : 0; // 低阈值，捕获浅色填充
-    if (i >> 2 < SIZE * SIZE) { satTotal += s; satCount++; }
-  }
-  const avgSat = satTotal / satCount;
-
-  // 如果整张图饱和度极低（灰度图），换亮度通道
-  if (avgSat < 0.03) {
-    for (let i = 0; i < data.length; i += 4) {
-      const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
-      satMask[i >> 2] = gray < 128 ? 1 : 0; // 暗色像素 = 可能的数据区域
-    }
+    satCache[idx] = max === 0 ? 0 : (max - min) / max;
+    lumCache[idx] = (r + g + b) / 3;
   }
 
-  // --- 径向扫描：找最远的高饱和度/暗像素 ---
   const cx = SIZE / 2, cy = SIZE / 2;
   const NUM_RAYS = 720;
   const maxR = SIZE * 0.46;
   const edgeFn = new Float32Array(NUM_RAYS);
 
+  // 自适应：判断是浅色背景+彩色多边形，还是深色背景+亮色多边形
+  const cornerLum = sampleArea(lumCache, SIZE, SIZE * 0.05, SIZE * 0.05, 30);
+  const isDarkBg = cornerLum < 100;
+
   for (let i = 0; i < NUM_RAYS; i++) {
     const angle = (i * 2 * Math.PI) / NUM_RAYS;
-    const cos = Math.cos(angle), sin = Math.sin(angle);
-    let farthest = 0;
-
-    for (let r = 5; r < maxR; r++) {
-      const x = Math.floor(cx + r * cos);
-      const y = Math.floor(cy + r * sin);
-      if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) break;
-      if (satMask[y * SIZE + x]) farthest = r;
-    }
-    edgeFn[i] = farthest;
+    edgeFn[i] = findRegionBoundary(SIZE, cx, cy,
+      Math.cos(angle), Math.sin(angle), maxR, satCache, lumCache, isDarkBg);
   }
 
-  // --- 平滑 ---
-  smooth1D(edgeFn, 6);
+  // 如果结果太稀疏，降低阈值重试
+  const nonZero = edgeFn.filter(v => v > 5).length;
+  if (nonZero < NUM_RAYS * 0.3) {
+    for (let i = 0; i < NUM_RAYS; i++) {
+      const angle = (i * 2 * Math.PI) / NUM_RAYS;
+      edgeFn[i] = findRegionBoundary(SIZE, cx, cy,
+        Math.cos(angle), Math.sin(angle), maxR, satCache, lumCache, isDarkBg, true);
+    }
+  }
 
-  // --- 找顶点 ---
+  smooth1D(edgeFn, 8);
   const vertices = detectVertices(edgeFn, NUM_RAYS, maxR);
 
   const axes = vertices.map(v => ({
     angle: (v.idx / NUM_RAYS) * 360,
     confidence: Math.round(v.score * 100) / 100
   }));
-
   const values = vertices.map(v =>
     Math.min(100, Math.max(0, Math.round((v.dist / (maxR * 0.80)) * 100)))
   );
-
   const dimensions = Array.from({length: vertices.length}, (_, i) => `维度${i+1}`).map(n => ({
     name: n, detected: false
   }));
 
   const result = { dimCount: vertices.length, dimensions, values, axes, center: { x: cx, y: cy } };
 
-  // --- 尝试 Tesseract OCR 提取标签文字 ---
   if (tesseractReady && vertices.length >= 3) {
     runOCR(img, result).then(() => callback(result));
   } else {
     callback(result);
   }
+}
+
+function sampleArea(arr, size, cx, cy, radius) {
+  let sum = 0, n = 0;
+  for (let dx = -radius; dx <= radius; dx++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      if (dx * dx + dy * dy > radius * radius) continue;
+      const x = Math.floor(cx + dx), y = Math.floor(cy + dy);
+      if (x < 0 || x >= size || y < 0 || y >= size) continue;
+      sum += arr[y * size + x]; n++;
+    }
+  }
+  return n > 0 ? sum / n : 0;
+}
+
+// 沿射线追踪连续区域，找到最远边界（忽略孤点噪点）
+function findRegionBoundary(size, cx, cy, cos, sin, maxR, satCache, lumCache, isDarkBg, relaxed) {
+  let inRegion = false;
+  let regionEnd = 0;
+  let gapCount = 0;
+  const gapLimit = relaxed ? 15 : 8;
+  const minRun = relaxed ? 4 : 6;
+
+  for (let r = 3; r < maxR; r++) {
+    const x = Math.floor(cx + r * cos);
+    const y = Math.floor(cy + r * sin);
+    if (x < 0 || x >= size || y < 0 || y >= size) break;
+    const idx = y * size + x;
+    const isDataPx = isDarkBg ? lumCache[idx] > 100 : satCache[idx] > 0.06;
+
+    if (isDataPx) {
+      if (!inRegion) {
+        let runLen = 1;
+        for (let a = r + 1; a < Math.min(r + minRun + 1, maxR); a++) {
+          const ax = Math.floor(cx + a * cos), ay = Math.floor(cy + a * sin);
+          if (ax < 0 || ax >= size || ay < 0 || ay >= size) break;
+          if (isDarkBg ? lumCache[ay * size + ax] > 100 : satCache[ay * size + ax] > 0.06) runLen++;
+        }
+        if (runLen >= minRun) { inRegion = true; r += runLen - 1; regionEnd = r; }
+      } else { regionEnd = r; gapCount = 0; }
+    } else if (inRegion) {
+      gapCount++;
+      if (gapCount >= gapLimit) break;
+    }
+  }
+  return inRegion ? regionEnd : 0;
 }
 
 async function runOCR(img, result) {
