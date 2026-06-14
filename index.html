@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>检测雷达图 + OCR</title>
+<title>雷达图生成器</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -200,56 +200,6 @@ body {
 .color-opt:hover { transform: scale(1.1); }
 .color-opt.selected { border-color: #1d1d1f; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #0071e3; }
 
-.upload-area {
-  border: 2px dashed #d2d2d7;
-  border-radius: 12px;
-  padding: 24px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: #f5f5f7;
-}
-.upload-area:hover {
-  border-color: #0071e3;
-  background: #ffffff;
-}
-.upload-area.dragover {
-  border-color: #0071e3;
-  background: rgba(0,113,227,0.05);
-}
-.upload-area .icon { font-size: 32px; margin-bottom: 8px; }
-.upload-area .text { font-size: 13px; color: #86868b; }
-.upload-area .sub { font-size: 11px; color: #c7c7cc; margin-top: 4px; }
-
-.ocr-result {
-  background: #f5f5f7;
-  border-radius: 10px;
-  padding: 12px;
-  margin-top: 8px;
-}
-.ocr-result .title {
-  font-size: 12px;
-  color: #86868b;
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-.ocr-result .item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px solid #e5e5ea;
-  font-size: 13px;
-}
-.ocr-result .item:last-child { border-bottom: none; }
-.ocr-result .item .name { color: #1d1d1f; }
-.ocr-result .item .val { color: #0071e3; font-weight: 600; min-width: 36px; text-align: right; }
-.ocr-result .item input[type="range"] {
-  width: 80px;
-  margin-left: 8px;
-  accent-color: #0071e3;
-}
-
 .tooltip {
   position: absolute;
   background: rgba(255,255,255,0.98);
@@ -279,48 +229,16 @@ body {
 .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
 .empty-state .text { font-size: 14px; }
 
-.loading {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid #e5e5ea;
-  border-top-color: #0071e3;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-#file-input { display: none; }
-
-.preview-img {
-  max-width: 100%;
-  max-height: 120px;
-  border-radius: 8px;
-  margin-top: 8px;
-}
 </style>
 </head>
 <body>
 
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1>检测雷达图 + OCR</h1>
-    <p>Radar Chart Detector & OCR</p>
+    <h1>雷达图生成器</h1>
+    <p>Radar Chart Generator</p>
   </div>
   <div class="sidebar-body">
-
-    <!-- 智能识别导入 -->
-    <div class="form-group">
-      <label>📷 智能识别导入</label>
-      <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
-        <div class="icon">📤</div>
-        <div class="text">点击或拖拽上传雷达图图片</div>
-        <div class="sub">自动识别维度名称和数值，支持手动校正</div>
-      </div>
-      <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
-      <div id="ocr-status"></div>
-      <div id="ocr-preview"></div>
-    </div>
 
     <!-- 数据集切换 -->
     <div class="form-group">
@@ -390,8 +308,6 @@ const COLORS = [
 
 let datasets = [];
 let activeIdx = 0;
-let ocrResult = null;
-
 function initUI() {
   const cp = document.getElementById('color-picker');
   cp.innerHTML = COLORS.map((c, i) =>
@@ -401,21 +317,6 @@ function initUI() {
   updateDatasetTabs();
   updateDimList();
   render();
-
-  const uploadArea = document.getElementById('upload-area');
-  uploadArea.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    uploadArea.classList.add('dragover');
-  });
-  uploadArea.addEventListener('dragleave', () => {
-    uploadArea.classList.remove('dragover');
-  });
-  uploadArea.addEventListener('drop', (e) => {
-    e.preventDefault();
-    uploadArea.classList.remove('dragover');
-    const files = e.dataTransfer.files;
-    if (files.length > 0) processImage(files[0]);
-  });
 }
 
 function updateDatasetTabs() {
@@ -438,7 +339,7 @@ function updateDimList() {
   if (datasets.length === 0) {
     document.getElementById('ds-name').value = '';
     document.getElementById('dim-count').value = 0;
-    document.getElementById('dim-list').innerHTML = '<div class="empty-state"><div class="icon">📊</div><div class="text">点击「添加数据系列」或上传图片开始</div></div>';
+    document.getElementById('dim-list').innerHTML = '<div class="empty-state"><div class="icon">📊</div><div class="text">点击「添加数据系列」开始</div></div>';
     return;
   }
 
@@ -465,326 +366,6 @@ function updateDimList() {
       ${ds.dims.length>3?`<button class="del-btn" onclick="removeDim(${i})">✕</button>`:''}
     </div>
   `).join('');
-}
-
-// ================ 图片识别（核心算法） ================
-function handleFileSelect(event) {
-  const file = event.target.files[0];
-  if (file) processImage(file);
-}
-
-function processImage(file) {
-  const statusDiv = document.getElementById('ocr-status');
-  const previewDiv = document.getElementById('ocr-preview');
-
-  statusDiv.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;color:#0071e3;"><span class="loading"></span>正在分析图片...</div>';
-  previewDiv.innerHTML = '';
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      analyzeRadarChart(img, (result) => {
-        statusDiv.innerHTML = '<div style="padding:8px 0;color:#34c759;">✅ 识别完成，可手动校正后应用</div>';
-        ocrResult = result;
-        showOCRPreview(result, e.target.result);
-      });
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-// ========== v4: HSV饱和度分割 + Tesseract.js OCR ==========
-let tesseractReady = false;
-
-// 预加载 Tesseract（轻量）
-(function preloadOCR() {
-  if (typeof Tesseract !== 'undefined') { tesseractReady = true; return; }
-  const s = document.createElement('script');
-  s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-  s.onload = () => { tesseractReady = true; };
-  s.onerror = () => { console.warn('Tesseract.js 加载失败'); };
-  document.head.appendChild(s);
-})();
-
-function analyzeRadarChart(img, callback) {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  const SIZE = 600;
-  canvas.width = SIZE;
-  canvas.height = SIZE;
-  ctx.drawImage(img, 0, 0, SIZE, SIZE);
-  const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
-
-  // 预计算每个像素的饱和度和亮度
-  const satCache = new Float32Array(SIZE * SIZE);
-  const lumCache = new Float32Array(SIZE * SIZE);
-  for (let i = 0; i < data.length; i += 4) {
-    const idx = i >> 2;
-    const r = data[i], g = data[i + 1], b = data[i + 2];
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    satCache[idx] = max === 0 ? 0 : (max - min) / max;
-    lumCache[idx] = (r + g + b) / 3;
-  }
-
-  const cx = SIZE / 2, cy = SIZE / 2;
-  const NUM_RAYS = 720;
-  const maxR = SIZE * 0.46;
-  const edgeFn = new Float32Array(NUM_RAYS);
-
-  // 自适应：判断是浅色背景+彩色多边形，还是深色背景+亮色多边形
-  const cornerLum = sampleArea(lumCache, SIZE, SIZE * 0.05, SIZE * 0.05, 30);
-  const isDarkBg = cornerLum < 100;
-
-  for (let i = 0; i < NUM_RAYS; i++) {
-    const angle = (i * 2 * Math.PI) / NUM_RAYS;
-    edgeFn[i] = findRegionBoundary(SIZE, cx, cy,
-      Math.cos(angle), Math.sin(angle), maxR, satCache, lumCache, isDarkBg);
-  }
-
-  // 如果结果太稀疏，降低阈值重试
-  const nonZero = edgeFn.filter(v => v > 5).length;
-  if (nonZero < NUM_RAYS * 0.3) {
-    for (let i = 0; i < NUM_RAYS; i++) {
-      const angle = (i * 2 * Math.PI) / NUM_RAYS;
-      edgeFn[i] = findRegionBoundary(SIZE, cx, cy,
-        Math.cos(angle), Math.sin(angle), maxR, satCache, lumCache, isDarkBg, true);
-    }
-  }
-
-  smooth1D(edgeFn, 8);
-  const vertices = detectVertices(edgeFn, NUM_RAYS, maxR);
-
-  const axes = vertices.map(v => ({
-    angle: (v.idx / NUM_RAYS) * 360,
-    confidence: Math.round(v.score * 100) / 100
-  }));
-  const values = vertices.map(v =>
-    Math.min(100, Math.max(0, Math.round((v.dist / (maxR * 0.80)) * 100)))
-  );
-  const dimensions = Array.from({length: vertices.length}, (_, i) => `维度${i+1}`).map(n => ({
-    name: n, detected: false
-  }));
-
-  const result = { dimCount: vertices.length, dimensions, values, axes, center: { x: cx, y: cy } };
-
-  if (tesseractReady && vertices.length >= 3) {
-    runOCR(img, result).then(() => callback(result));
-  } else {
-    callback(result);
-  }
-}
-
-function sampleArea(arr, size, cx, cy, radius) {
-  let sum = 0, n = 0;
-  for (let dx = -radius; dx <= radius; dx++) {
-    for (let dy = -radius; dy <= radius; dy++) {
-      if (dx * dx + dy * dy > radius * radius) continue;
-      const x = Math.floor(cx + dx), y = Math.floor(cy + dy);
-      if (x < 0 || x >= size || y < 0 || y >= size) continue;
-      sum += arr[y * size + x]; n++;
-    }
-  }
-  return n > 0 ? sum / n : 0;
-}
-
-// 沿射线追踪连续区域，找到最远边界（忽略孤点噪点）
-function findRegionBoundary(size, cx, cy, cos, sin, maxR, satCache, lumCache, isDarkBg, relaxed) {
-  let inRegion = false;
-  let regionEnd = 0;
-  let gapCount = 0;
-  const gapLimit = relaxed ? 15 : 8;
-  const minRun = relaxed ? 4 : 6;
-
-  for (let r = 3; r < maxR; r++) {
-    const x = Math.floor(cx + r * cos);
-    const y = Math.floor(cy + r * sin);
-    if (x < 0 || x >= size || y < 0 || y >= size) break;
-    const idx = y * size + x;
-    const isDataPx = isDarkBg ? lumCache[idx] > 100 : satCache[idx] > 0.06;
-
-    if (isDataPx) {
-      if (!inRegion) {
-        let runLen = 1;
-        for (let a = r + 1; a < Math.min(r + minRun + 1, maxR); a++) {
-          const ax = Math.floor(cx + a * cos), ay = Math.floor(cy + a * sin);
-          if (ax < 0 || ax >= size || ay < 0 || ay >= size) break;
-          if (isDarkBg ? lumCache[ay * size + ax] > 100 : satCache[ay * size + ax] > 0.06) runLen++;
-        }
-        if (runLen >= minRun) { inRegion = true; r += runLen - 1; regionEnd = r; }
-      } else { regionEnd = r; gapCount = 0; }
-    } else if (inRegion) {
-      gapCount++;
-      if (gapCount >= gapLimit) break;
-    }
-  }
-  return inRegion ? regionEnd : 0;
-}
-
-async function runOCR(img, result) {
-  try {
-    const worker = await Tesseract.createWorker('chi_sim+eng', 1, {
-      logger: () => {}
-    });
-    const { data: { text } } = await worker.recognize(img);
-    await worker.terminate();
-
-    // 提取识别的词（中英文 + 数字）
-    const words = text.match(/[\u4e00-\u9fff\w]+/g) || [];
-    // 过滤太短的
-    const labels = words.filter(w => w.length >= 2 && !/^\d+$/.test(w));
-    // 去重
-    const unique = [...new Set(labels)];
-
-    if (unique.length >= result.dimCount) {
-      // 只取前 N 个词作为维度名
-      result.dimensions = unique.slice(0, result.dimCount).map((name, i) => ({
-        name, detected: true
-      }));
-    }
-  } catch (e) {
-    console.warn('OCR失败:', e);
-  }
-}
-
-function smooth1D(arr, windowSize) {
-  const tmp = new Float32Array(arr.length);
-  for (let i = 0; i < arr.length; i++) {
-    let sum = 0, cnt = 0;
-    for (let w = -windowSize; w <= windowSize; w++) {
-      let idx = i + w;
-      if (idx < 0) idx += arr.length;
-      if (idx >= arr.length) idx -= arr.length;
-      sum += arr[idx]; cnt++;
-    }
-    tmp[i] = sum / cnt;
-  }
-  arr.set(tmp);
-}
-
-function detectVertices(edgeFn, numRays, maxR) {
-  // 计算边界均值
-  let total = 0, validCnt = 0;
-  for (let i = 0; i < numRays; i++) {
-    if (edgeFn[i] > 5) { total += edgeFn[i]; validCnt++; }
-  }
-  const mean = validCnt > 0 ? total / validCnt : 0;
-  const minVal = Math.max(8, mean * 0.45);
-
-  // 找局部极大值
-  const cand = [];
-  const nb = 10;
-  for (let i = 0; i < numRays; i++) {
-    const cur = edgeFn[i];
-    if (cur < minVal) continue;
-    let isPeak = true;
-    for (let d = 1; d <= nb; d++) {
-      if (edgeFn[(i - d + numRays) % numRays] >= cur ||
-          edgeFn[(i + d) % numRays] >= cur) { isPeak = false; break; }
-    }
-    if (!isPeak) continue;
-
-    // 凸出度
-    let basin = Infinity;
-    for (let side = -1; side <= 1; side += 2) {
-      for (let d = nb + 1; d <= 25; d++) {
-        const idx = (i + side * d + numRays) % numRays;
-        if (edgeFn[idx] < basin) basin = edgeFn[idx];
-      }
-    }
-    const prominence = cur - basin;
-    if (prominence > 5) cand.push({ idx: i, dist: cur, score: prominence / (cur + 1) });
-  }
-
-  if (cand.length === 0) return [];
-
-  // 贪心选点
-  cand.sort((a, b) => b.score - a.score);
-  const sel = [];
-  const gap = Math.floor(numRays / 20);
-  for (const c of cand) {
-    if (sel.some(s => {
-      let d = Math.abs(c.idx - s.idx);
-      if (d > numRays / 2) d = numRays - d;
-      return d < gap;
-    })) continue;
-    sel.push(c);
-  }
-
-  sel.sort((a, b) => a.idx - b.idx);
-  return sel;
-}
-
-// ================ OCR 预览与校正 ================
-function showOCRPreview(result, imgDataUrl) {
-  const previewDiv = document.getElementById('ocr-preview');
-  const anyDetected = result.dimensions.some(d => d.detected);
-
-  let html = '<div style="margin-top:8px;">';
-  html += `<img src="${imgDataUrl}" class="preview-img" />`;
-  html += '<div class="ocr-result">';
-  html += `<div class="title">识别结果（共 ${result.dimCount} 维）${anyDetected ? ' — AI文字识别' : ''} — 可手动编辑</div>`;
-
-  result.dimensions.forEach((dim, i) => {
-    const val = result.values[i] || 0;
-    html += `<div class="item">
-      <input type="text" value="${dim.name}" onchange="ocrResult.dimensions[${i}].name=this.value" style="border:1px solid #d2d2d7;border-radius:6px;padding:4px 8px;font-size:13px;width:110px;margin-right:8px;">
-      <div style="display:flex;align-items:center;">
-        <input type="range" min="0" max="100" value="${val}"
-          oninput="ocrResult.values[${i}]=parseInt(this.value);this.nextElementSibling.textContent=this.value;renderOCRPreviewChart()" />
-        <span class="val" style="margin-left:6px;">${val}</span>
-      </div>
-    </div>`;
-  });
-
-  html += '</div>';
-  html += `<button class="btn btn-success btn-block" style="margin-top:10px;" onclick="applyOCRResult()">应用识别结果</button>`;
-  html += `<button class="btn btn-outline btn-block" style="margin-top:6px;" onclick="clearOCRResult()">清除</button>`;
-  html += '</div>';
-
-  previewDiv.innerHTML = html;
-
-  // 渲染一个小的预览图
-  renderOCRPreviewChart();
-}
-
-function renderOCRPreviewChart() {
-  if (!ocrResult) return;
-  // 预览图已经在主图区域通过 render() 显示
-}
-
-function applyOCRResult() {
-  if (!ocrResult) return;
-
-  const usedColors = datasets.map(d => d.color);
-  const color = COLORS.find(c => !usedColors.includes(c)) || COLORS[0];
-
-  const newDataset = {
-    name: `识别数据${datasets.length + 1}`,
-    color: color,
-    dims: ocrResult.dimensions.map((dim, i) => ({
-      name: dim.name,
-      value: ocrResult.values[i] || 0
-    }))
-  };
-
-  datasets.push(newDataset);
-  activeIdx = datasets.length - 1;
-
-  updateDatasetTabs();
-  updateDimList();
-  render();
-
-  document.getElementById('ocr-preview').innerHTML = '';
-  document.getElementById('ocr-status').innerHTML = '<div style="padding:8px 0;color:#34c759;">✅ 已应用到图表</div>';
-}
-
-function clearOCRResult() {
-  ocrResult = null;
-  document.getElementById('ocr-preview').innerHTML = '';
-  document.getElementById('ocr-status').innerHTML = '';
-  document.getElementById('file-input').value = '';
 }
 
 // ================ 数据操作 ================
@@ -912,7 +493,7 @@ function render() {
     container.appendChild(tooltip);
     const empty = document.createElement('div');
     empty.className = 'empty-state';
-    empty.innerHTML = '<div class="icon" style="font-size:64px;margin-bottom:16px;">📊</div><div style="font-size:16px;color:#86868b;">点击左侧「添加数据系列」或上传图片开始</div>';
+    empty.innerHTML = '<div class="icon" style="font-size:64px;margin-bottom:16px;">📊</div><div style="font-size:16px;color:#86868b;">点击左侧「添加数据系列」开始</div>';
     empty.style.cssText = 'text-align:center;color:#c7c7cc;';
     container.appendChild(empty);
     return;
