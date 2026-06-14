@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>闆疯揪鍥剧敓鎴愬櫒</title>
+<title>雷达图生成器</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -304,71 +304,71 @@ body {
 
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1>闆疯揪鍥剧敓鎴愬櫒</h1>
+    <h1>雷达图生成器</h1>
     <p>Radar Chart Generator</p>
   </div>
   <div class="sidebar-body">
 
-    <!-- 鏅鸿兘璇嗗埆瀵煎叆 -->
+    <!-- 智能识别导入 -->
     <div class="form-group">
-      <label>馃摲 鏅鸿兘璇嗗埆瀵煎叆</label>
+      <label>📷 智能识别导入</label>
       <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
-        <div class="icon">馃摛</div>
-        <div class="text">鐐瑰嚮鎴栨嫋鎷戒笂浼犻浄杈惧浘鍥剧墖</div>
-        <div class="sub">鑷姩璇嗗埆缁村害鍚嶇О鍜屾暟鍊硷紝鏀寔鎵嬪姩鏍℃</div>
+        <div class="icon">📤</div>
+        <div class="text">点击或拖拽上传雷达图图片</div>
+        <div class="sub">自动识别维度名称和数值，支持手动校正</div>
       </div>
       <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
       <div id="ocr-status"></div>
       <div id="ocr-preview"></div>
     </div>
 
-    <!-- 鏁版嵁闆嗗垏鎹?-->
+    <!-- 数据集切换 -->
     <div class="form-group">
-      <label>馃搳 鏁版嵁绯诲垪</label>
+      <label>📊 数据系列</label>
       <div class="dataset-tabs" id="dataset-tabs"></div>
-      <button class="btn btn-outline btn-sm btn-block" onclick="addDataset()">娣诲姞鏁版嵁绯诲垪</button>
+      <button class="btn btn-outline btn-sm btn-block" onclick="addDataset()">添加数据系列</button>
     </div>
 
-    <!-- 褰撳墠鏁版嵁闆嗙紪杈?-->
+    <!-- 当前数据集编辑 -->
     <div class="form-group">
-      <label>鉁忥笍 褰撳墠绯诲垪鍚嶇О</label>
-      <input id="ds-name" placeholder="杈撳叆绯诲垪鍚嶇О" onchange="updateDatasetName(this.value)" />
+      <label>✏️ 当前系列名称</label>
+      <input id="ds-name" placeholder="输入系列名称" onchange="updateDatasetName(this.value)" />
     </div>
 
     <div class="form-group">
-      <label>馃帹 绯诲垪棰滆壊</label>
+      <label>🎨 系列颜色</label>
       <div class="color-picker" id="color-picker"></div>
     </div>
 
     <div class="form-group">
-      <label>馃搻 缁村害鏁伴噺</label>
+      <label>📐 维度数量</label>
       <div class="form-row">
-        <input type="number" id="dim-count" value="0" min="3" max="12" placeholder="缁村害鏁? onchange="changeDimCount(this.value)" />
-        <button class="btn btn-outline btn-sm" onclick="randomizeValues()">闅忔満濉厖</button>
-        <button class="btn btn-danger btn-sm" onclick="clearDataset()">娓呯┖鏁板€?/button>
+        <input type="number" id="dim-count" value="0" min="3" max="12" placeholder="维度数" onchange="changeDimCount(this.value)" />
+        <button class="btn btn-outline btn-sm" onclick="randomizeValues()">随机填充</button>
+        <button class="btn btn-danger btn-sm" onclick="clearDataset()">清空数值</button>
       </div>
     </div>
 
     <div class="form-group">
-      <label>馃搵 缁村害鍚嶇О涓庢暟鍊?(0-100)</label>
+      <label>📋 维度名称与数值 (0-100)</label>
       <div class="dim-list" id="dim-list"></div>
     </div>
 
     <div class="form-group">
-      <label>鈿欙笍 鏄剧ず閫夐」</label>
+      <label>⚙️ 显示选项</label>
       <div class="form-row" style="font-size:13px;gap:16px;color:#86868b;">
-        <label><input type="checkbox" id="show-fill" checked onchange="render()"> 濉厖</label>
-        <label><input type="checkbox" id="show-points" checked onchange="render()"> 鑺傜偣</label>
-        <label><input type="checkbox" id="show-grid" checked onchange="render()"> 缃戞牸</label>
-        <label><input type="checkbox" id="show-labels" checked onchange="render()"> 鏍囩</label>
+        <label><input type="checkbox" id="show-fill" checked onchange="render()"> 填充</label>
+        <label><input type="checkbox" id="show-points" checked onchange="render()"> 节点</label>
+        <label><input type="checkbox" id="show-grid" checked onchange="render()"> 网格</label>
+        <label><input type="checkbox" id="show-labels" checked onchange="render()"> 标签</label>
       </div>
     </div>
 
     <div class="form-group">
-      <label>馃捑 瀵煎嚭</label>
-      <button class="btn btn-primary btn-block" onclick="exportPNG()">瀵煎嚭 PNG</button>
-      <button class="btn btn-primary btn-block" onclick="exportSVG()">瀵煎嚭 SVG</button>
-      <button class="btn btn-outline btn-block" onclick="exportJSON()">瀵煎嚭 JSON</button>
+      <label>💾 导出</label>
+      <button class="btn btn-primary btn-block" onclick="exportPNG()">导出 PNG</button>
+      <button class="btn btn-primary btn-block" onclick="exportSVG()">导出 SVG</button>
+      <button class="btn btn-outline btn-block" onclick="exportJSON()">导出 JSON</button>
     </div>
 
   </div>
@@ -376,7 +376,7 @@ body {
 
 <div class="graph-area" id="graph">
   <div class="graph-toolbar">
-    <button title="閫傚簲灞忓箷" onclick="fitView()">鈯?/button>
+    <button title="适应屏幕" onclick="fitView()">⊞</button>
   </div>
   <div class="tooltip" id="tooltip"></div>
 </div>
@@ -429,7 +429,7 @@ function updateDatasetTabs() {
     return `<div class="dataset-tab${isActive?' active':''}" style="${isActive?'background:'+ds.color:''}" onclick="switchDataset(${i})">
       <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ds.color}"></span>
       ${ds.name}
-      ${datasets.length>1?`<span class="close" onclick="event.stopPropagation();removeDataset(${i})">鉁?/span>`:''}
+      ${datasets.length>1?`<span class="close" onclick="event.stopPropagation();removeDataset(${i})">✕</span>`:''}
     </div>`;
   }).join('');
 }
@@ -438,7 +438,7 @@ function updateDimList() {
   if (datasets.length === 0) {
     document.getElementById('ds-name').value = '';
     document.getElementById('dim-count').value = 0;
-    document.getElementById('dim-list').innerHTML = '<div class="empty-state"><div class="icon">馃搳</div><div class="text">鐐瑰嚮銆屾坊鍔犳暟鎹郴鍒椼€嶆垨涓婁紶鍥剧墖寮€濮?/div></div>';
+    document.getElementById('dim-list').innerHTML = '<div class="empty-state"><div class="icon">📊</div><div class="text">点击「添加数据系列」或上传图片开始</div></div>';
     return;
   }
 
@@ -452,22 +452,22 @@ function updateDimList() {
 
   const list = document.getElementById('dim-list');
   if (ds.dims.length === 0) {
-    list.innerHTML = '<div class="empty-state"><div class="icon">馃搻</div><div class="text">璁剧疆缁村害鏁伴噺鍚庡紑濮嬫坊鍔犳暟鎹?/div></div>';
+    list.innerHTML = '<div class="empty-state"><div class="icon">📐</div><div class="text">设置维度数量后开始添加数据</div></div>';
     return;
   }
 
   list.innerHTML = ds.dims.map((d, i) => `
     <div class="dim-item">
       <span class="idx">${i+1}</span>
-      <input type="text" value="${d.name}" placeholder="缁村害鍚嶇О" onchange="updateDimName(${i},this.value)" />
+      <input type="text" value="${d.name}" placeholder="维度名称" onchange="updateDimName(${i},this.value)" />
       <input type="range" min="0" max="100" value="${d.value}" oninput="updateDimValue(${i},this.value);this.nextElementSibling.textContent=this.value" />
       <span class="val">${d.value}</span>
-      ${ds.dims.length>3?`<button class="del-btn" onclick="removeDim(${i})">鉁?/button>`:''}
+      ${ds.dims.length>3?`<button class="del-btn" onclick="removeDim(${i})">✕</button>`:''}
     </div>
   `).join('');
 }
 
-// ================ 鍥剧墖璇嗗埆锛堟牳蹇冪畻娉曪級 ================
+// ================ 图片识别（核心算法） ================
 function handleFileSelect(event) {
   const file = event.target.files[0];
   if (file) processImage(file);
@@ -477,7 +477,7 @@ function processImage(file) {
   const statusDiv = document.getElementById('ocr-status');
   const previewDiv = document.getElementById('ocr-preview');
 
-  statusDiv.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;color:#0071e3;"><span class="loading"></span>姝ｅ湪鍒嗘瀽鍥剧墖...</div>';
+  statusDiv.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;color:#0071e3;"><span class="loading"></span>正在分析图片...</div>';
   previewDiv.innerHTML = '';
 
   const reader = new FileReader();
@@ -485,7 +485,7 @@ function processImage(file) {
     const img = new Image();
     img.onload = () => {
       analyzeRadarChart(img, (result) => {
-        statusDiv.innerHTML = '<div style="padding:8px 0;color:#34c759;">鉁?璇嗗埆瀹屾垚锛屽彲鎵嬪姩鏍℃鍚庡簲鐢?/div>';
+        statusDiv.innerHTML = '<div style="padding:8px 0;color:#34c759;">✅ 识别完成，可手动校正后应用</div>';
         ocrResult = result;
         showOCRPreview(result, e.target.result);
       });
@@ -506,14 +506,16 @@ function analyzeRadarChart(img, callback) {
   const imageData = ctx.getImageData(0, 0, size, size);
   const data = imageData.data;
 
-  // 姝ラ1: 鎵惧埌涓績鐐癸紙閫氳繃妫€娴嬪悓蹇冪粨鏋勭殑涓績锛?  const center = findCenter(ctx, size);
+  // 步骤1: 找到中心点（通过检测同心结构的中心）
+  const center = findCenter(ctx, size);
 
-  // 姝ラ2: 妫€娴嬭酱绾胯搴?  const axes = detectAxes(ctx, center.x, center.y, size);
+  // 步骤2: 检测轴线角度
+  const axes = detectAxes(ctx, center.x, center.y, size);
 
-  // 姝ラ3: 妫€娴嬫暟鎹偣
+  // 步骤3: 检测数据点
   const values = detectDataPoints(ctx, center.x, center.y, axes, size);
 
-  // 姝ラ4: 鎺ㄦ柇缁村害鍚嶇О
+  // 步骤4: 推断维度名称
   const dimensions = inferDimensionNames(axes.length);
 
   callback({
@@ -526,11 +528,11 @@ function analyzeRadarChart(img, callback) {
 }
 
 function findCenter(ctx, size) {
-  // 閫氳繃妫€娴嬪浘鍍忎腑蹇冮檮杩戠殑浣庡彉鍖栧尯鍩熸潵瀹氫綅涓績
+  // 通过检测图像中心附近的低变化区域来定位中心
   const cx = Math.floor(size / 2);
   const cy = Math.floor(size / 2);
 
-  // 鍦ㄤ腑蹇冨尯鍩熸悳绱㈡渶"瀵圭О"鐨勭偣
+  // 在中心区域搜索最"对称"的点
   let bestX = cx, bestY = cy;
   let bestScore = -1;
 
@@ -548,7 +550,7 @@ function findCenter(ctx, size) {
     }
   }
 
-  // 绮剧粏鎼滅储
+  // 精细搜索
   let fineX = bestX, fineY = bestY;
   bestScore = -1;
   for (let dx = -6; dx <= 6; dx++) {
@@ -597,7 +599,7 @@ function computeRadialSymmetry(ctx, cx, cy, size) {
 function detectAxes(ctx, cx, cy, size) {
   const angles = [];
   const maxRadius = size * 0.42;
-  const step = 2; // 瑙掑害姝ラ暱
+  const step = 2; // 角度步长
 
   for (let deg = 0; deg < 360; deg += step) {
     const rad = (deg * Math.PI) / 180;
@@ -615,7 +617,7 @@ function detectAxes(ctx, cx, cy, size) {
       totalBrightness += brightness;
       sampleCount++;
 
-      // 妫€娴嬬嚎鏉★細涓庡懆鍥村儚绱犳湁鏄捐憲宸紓
+      // 检测线条：与周围像素有显著差异
       if (r > 20) {
         const px1 = Math.floor(cx + (r-2) * Math.cos(rad));
         const py1 = Math.floor(cy + (r-2) * Math.sin(rad));
@@ -633,15 +635,17 @@ function detectAxes(ctx, cx, cy, size) {
     }
 
     const avgBrightness = totalBrightness / sampleCount;
-    // 杞寸嚎鐗瑰緛锛氭湁杈冨杈圭紭鍍忕礌锛屼笖鏁翠綋涓嶆槸鍏ㄧ櫧
+    // 轴线特征：有较多边缘像素，且整体不是全白
     if (darkPixels > 8 && avgBrightness < 200) {
       angles.push(deg);
     }
   }
 
-  // 鑱氱被鎵惧埌涓昏鐨勮酱绾胯搴?  const clusters = [];
+  // 聚类找到主要的轴线角度
+  const clusters = [];
   if (angles.length === 0) {
-    //  fallback: 鍋囪7缁?    for (let i = 0; i < 7; i++) {
+    //  fallback: 假设7维
+    for (let i = 0; i < 7; i++) {
       clusters.push([i * 360 / 7 - 90]);
     }
     return clusters.map(c => ({ angle: c[0], confidence: 0.5 }));
@@ -658,14 +662,15 @@ function detectAxes(ctx, cx, cy, size) {
   }
   if (currentCluster.length > 0) clusters.push(currentCluster);
 
-  // 杩囨护澶皬鐨勭皣锛岃绠楁瘡涓皣鐨勪腑蹇冭搴?  const validClusters = clusters
+  // 过滤太小的簇，计算每个簇的中心角度
+  const validClusters = clusters
     .filter(c => c.length >= 3)
     .map(c => ({
       angle: c.reduce((a, b) => a + b, 0) / c.length,
       confidence: Math.min(1, c.length / 20)
     }));
 
-  // 濡傛灉妫€娴嬪埌鐨勭淮搴﹀お灏戯紝鐢ㄥ父瑙佺淮搴︽暟 fallback
+  // 如果检测到的维度太少，用常见维度数 fallback
   if (validClusters.length < 3) {
     const fallbackCount = 7;
     return Array.from({length: fallbackCount}, (_, i) => ({
@@ -686,7 +691,7 @@ function detectDataPoints(ctx, cx, cy, axes, size) {
     let bestR = 0;
     let bestScore = -1;
 
-    // 娌胯酱绾挎壂鎻忥紝瀵绘壘鏁版嵁鐐癸紙棰滆壊绐佸彉鎴栭珮楗卞拰搴﹀尯鍩燂級
+    // 沿轴线扫描，寻找数据点（颜色突变或高饱和度区域）
     for (let r = 10; r < maxRadius; r += 1) {
       const x = Math.floor(cx + r * Math.cos(rad));
       const y = Math.floor(cy + r * Math.sin(rad));
@@ -695,22 +700,24 @@ function detectDataPoints(ctx, cx, cy, axes, size) {
       const pixel = ctx.getImageData(x, y, 1, 1).data;
       const brightness = (pixel[0] + pixel[1] + pixel[2]) / 3;
 
-      // 妫€娴嬫暟鎹偣鐗瑰緛锛氫笌鑳屾櫙鏈夋槑鏄惧樊寮傜殑褰╄壊鍍忕礌
-      // 璁＄畻楗卞拰搴?      const max = Math.max(pixel[0], pixel[1], pixel[2]);
+      // 检测数据点特征：与背景有明显差异的彩色像素
+      // 计算饱和度
+      const max = Math.max(pixel[0], pixel[1], pixel[2]);
       const min = Math.min(pixel[0], pixel[1], pixel[2]);
       const saturation = max === 0 ? 0 : (max - min) / max;
 
-      // 妫€娴嬭竟缂樺己搴?      const left = ctx.getImageData(x-2, y, 1, 1).data;
+      // 检测边缘强度
+      const left = ctx.getImageData(x-2, y, 1, 1).data;
       const right = ctx.getImageData(x+2, y, 1, 1).data;
       const edgeStrength = Math.abs(brightness - (left[0]+left[1]+left[2])/3) +
                            Math.abs(brightness - (right[0]+right[1]+right[2])/3);
 
-      // 鏁版嵁鐐归€氬父鏄僵鑹蹭笖涓庤儗鏅姣斿己鐑堢殑
+      // 数据点通常是彩色且与背景对比强烈的
       let score = 0;
       if (saturation > 0.3) score += saturation * 50;
       if (edgeStrength > 30) score += edgeStrength;
 
-      // 瀵逛簬娣辫壊鑳屾櫙鍥撅紝鏁版嵁鐐归€氬父杈冧寒
+      // 对于深色背景图，数据点通常较亮
       if (brightness > 80) score += brightness * 0.3;
 
       if (score > bestScore) {
@@ -719,7 +726,7 @@ function detectDataPoints(ctx, cx, cy, axes, size) {
       }
     }
 
-    // 杞崲涓?0-100
+    // 转换为 0-100
     const value = Math.min(100, Math.max(0, Math.round((bestR / maxRadius) * 100)));
     values.push(value);
   });
@@ -728,34 +735,34 @@ function detectDataPoints(ctx, cx, cy, axes, size) {
 }
 
 function inferDimensionNames(count) {
-  // 甯歌闆疯揪鍥剧淮搴﹀悕绉板簱
+  // 常见雷达图维度名称库
   const libraries = {
-    3: ['缁村害A', '缁村害B', '缁村害C'],
-    4: ['缁村害A', '缁村害B', '缁村害C', '缁村害D'],
-    5: ['寮€鏀炬€?, '灏借矗鎬?, '澶栧悜鎬?, '瀹滀汉鎬?, '绁炵粡璐?],
-    6: ['鍔涢噺', '鏁忔嵎', '鏅哄姏', '浣撳姏', '榄呭姏', '骞歌繍'],
-    7: ['鍌叉參', '瀚夊', '璐┆', '鑹叉', '鎳掓儼', '鏆撮', '鏆存€?],
-    8: ['鏀诲嚮', '闃插尽', '鐢熷懡', '閫熷害', '鏆村嚮', '闂伩', '鍛戒腑', '鎶楁€?],
-    9: ['缁村害1', '缁村害2', '缁村害3', '缁村害4', '缁村害5', '缁村害6', '缁村害7', '缁村害8', '缁村害9'],
-    10: ['缁村害1', '缁村害2', '缁村害3', '缁村害4', '缁村害5', '缁村害6', '缁村害7', '缁村害8', '缁村害9', '缁村害10'],
-    11: Array.from({length: 11}, (_, i) => `缁村害${i+1}`),
-    12: Array.from({length: 12}, (_, i) => `缁村害${i+1}`),
+    3: ['维度A', '维度B', '维度C'],
+    4: ['维度A', '维度B', '维度C', '维度D'],
+    5: ['开放性', '尽责性', '外向性', '宜人性', '神经质'],
+    6: ['力量', '敏捷', '智力', '体力', '魅力', '幸运'],
+    7: ['傲慢', '嫉妒', '贪婪', '色欲', '懒惰', '暴食', '暴怒'],
+    8: ['攻击', '防御', '生命', '速度', '暴击', '闪避', '命中', '抗性'],
+    9: ['维度1', '维度2', '维度3', '维度4', '维度5', '维度6', '维度7', '维度8', '维度9'],
+    10: ['维度1', '维度2', '维度3', '维度4', '维度5', '维度6', '维度7', '维度8', '维度9', '维度10'],
+    11: Array.from({length: 11}, (_, i) => `维度${i+1}`),
+    12: Array.from({length: 12}, (_, i) => `维度${i+1}`),
   };
 
-  return (libraries[count] || Array.from({length: count}, (_, i) => `缁村害${i+1}`)).map(name => ({
+  return (libraries[count] || Array.from({length: count}, (_, i) => `维度${i+1}`)).map(name => ({
     name,
     detected: false
   }));
 }
 
-// ================ OCR 棰勮涓庢牎姝?================
+// ================ OCR 预览与校正 ================
 function showOCRPreview(result, imgDataUrl) {
   const previewDiv = document.getElementById('ocr-preview');
 
   let html = '<div style="margin-top:8px;">';
   html += `<img src="${imgDataUrl}" class="preview-img" />`;
   html += '<div class="ocr-result">';
-  html += `<div class="title">璇嗗埆缁撴灉锛堝叡 ${result.dimCount} 缁达級鈥?鍙粦鍔ㄦ牎姝?/div>`;
+  html += `<div class="title">识别结果（共 ${result.dimCount} 维）— 可滑动校正</div>`;
 
   result.dimensions.forEach((dim, i) => {
     const val = result.values[i] || 0;
@@ -770,19 +777,19 @@ function showOCRPreview(result, imgDataUrl) {
   });
 
   html += '</div>';
-  html += `<button class="btn btn-success btn-block" style="margin-top:10px;" onclick="applyOCRResult()">搴旂敤璇嗗埆缁撴灉</button>`;
-  html += `<button class="btn btn-outline btn-block" style="margin-top:6px;" onclick="clearOCRResult()">娓呴櫎</button>`;
+  html += `<button class="btn btn-success btn-block" style="margin-top:10px;" onclick="applyOCRResult()">应用识别结果</button>`;
+  html += `<button class="btn btn-outline btn-block" style="margin-top:6px;" onclick="clearOCRResult()">清除</button>`;
   html += '</div>';
 
   previewDiv.innerHTML = html;
 
-  // 娓叉煋涓€涓皬鐨勯瑙堝浘
+  // 渲染一个小的预览图
   renderOCRPreviewChart();
 }
 
 function renderOCRPreviewChart() {
   if (!ocrResult) return;
-  // 棰勮鍥惧凡缁忓湪涓诲浘鍖哄煙閫氳繃 render() 鏄剧ず
+  // 预览图已经在主图区域通过 render() 显示
 }
 
 function applyOCRResult() {
@@ -792,7 +799,7 @@ function applyOCRResult() {
   const color = COLORS.find(c => !usedColors.includes(c)) || COLORS[0];
 
   const newDataset = {
-    name: `璇嗗埆鏁版嵁${datasets.length + 1}`,
+    name: `识别数据${datasets.length + 1}`,
     color: color,
     dims: ocrResult.dimensions.map((dim, i) => ({
       name: dim.name,
@@ -808,7 +815,7 @@ function applyOCRResult() {
   render();
 
   document.getElementById('ocr-preview').innerHTML = '';
-  document.getElementById('ocr-status').innerHTML = '<div style="padding:8px 0;color:#34c759;">鉁?宸插簲鐢ㄥ埌鍥捐〃</div>';
+  document.getElementById('ocr-status').innerHTML = '<div style="padding:8px 0;color:#34c759;">✅ 已应用到图表</div>';
 }
 
 function clearOCRResult() {
@@ -818,7 +825,7 @@ function clearOCRResult() {
   document.getElementById('file-input').value = '';
 }
 
-// ================ 鏁版嵁鎿嶄綔 ================
+// ================ 数据操作 ================
 function switchDataset(idx) {
   activeIdx = idx;
   updateDatasetTabs();
@@ -833,11 +840,11 @@ function addDataset() {
   let dims = [];
   if (dimCount > 0) {
     for (let i = 0; i < dimCount; i++) {
-      const baseName = datasets[0].dims[i]?.name || `缁村害${i+1}`;
+      const baseName = datasets[0].dims[i]?.name || `维度${i+1}`;
       dims.push({ name: baseName, value: 0 });
     }
   }
-  datasets.push({ name: `绯诲垪${datasets.length+1}`, color, dims });
+  datasets.push({ name: `系列${datasets.length+1}`, color, dims });
   activeIdx = datasets.length - 1;
   updateDatasetTabs();
   updateDimList();
@@ -859,7 +866,7 @@ function removeDataset(idx) {
 
 function updateDatasetName(name) {
   if (datasets.length === 0) return;
-  datasets[activeIdx].name = name.trim() || '鏈懡鍚?;
+  datasets[activeIdx].name = name.trim() || '未命名';
   updateDatasetTabs();
 }
 
@@ -874,14 +881,14 @@ function selectColor(color, el) {
 
 function changeDimCount(count) {
   if (datasets.length === 0) {
-    alert('璇峰厛娣诲姞涓€涓暟鎹郴鍒?);
+    alert('请先添加一个数据系列');
     document.getElementById('dim-count').value = 0;
     return;
   }
   count = Math.max(3, Math.min(12, parseInt(count) || 3));
   datasets.forEach(ds => {
     while (ds.dims.length < count) {
-      ds.dims.push({ name: `缁村害${ds.dims.length+1}`, value: 0 });
+      ds.dims.push({ name: `维度${ds.dims.length+1}`, value: 0 });
     }
     while (ds.dims.length > count) {
       ds.dims.pop();
@@ -893,7 +900,7 @@ function changeDimCount(count) {
 
 function updateDimName(idx, name) {
   if (datasets.length === 0) return;
-  const val = name.trim() || `缁村害${idx+1}`;
+  const val = name.trim() || `维度${idx+1}`;
   datasets.forEach(ds => {
     if (ds.dims[idx]) ds.dims[idx].name = val;
   });
@@ -908,7 +915,7 @@ function updateDimValue(idx, val) {
 
 function removeDim(idx) {
   if (datasets.length === 0) return;
-  if (datasets[0].dims.length <= 3) return alert('鑷冲皯闇€瑕?涓淮搴?);
+  if (datasets[0].dims.length <= 3) return alert('至少需要3个维度');
   datasets.forEach(ds => ds.dims.splice(idx, 1));
   updateDimList();
   render();
@@ -928,7 +935,7 @@ function clearDataset() {
   render();
 }
 
-// ================ 娓叉煋 ================
+// ================ 渲染 ================
 function render() {
   const container = document.getElementById('graph');
   const w = container.clientWidth;
@@ -943,7 +950,7 @@ function render() {
     container.appendChild(tooltip);
     const empty = document.createElement('div');
     empty.className = 'empty-state';
-    empty.innerHTML = '<div class="icon" style="font-size:64px;margin-bottom:16px;">馃搳</div><div style="font-size:16px;color:#86868b;">鐐瑰嚮宸︿晶銆屾坊鍔犳暟鎹郴鍒椼€嶆垨涓婁紶鍥剧墖寮€濮?/div>';
+    empty.innerHTML = '<div class="icon" style="font-size:64px;margin-bottom:16px;">📊</div><div style="font-size:16px;color:#86868b;">点击左侧「添加数据系列」或上传图片开始</div>';
     empty.style.cssText = 'text-align:center;color:#c7c7cc;';
     container.appendChild(empty);
     return;
@@ -1057,11 +1064,11 @@ function hideTip() {
   document.getElementById('tooltip').style.display = 'none';
 }
 
-// ================ 瀵煎嚭 ================
+// ================ 导出 ================
 function exportPNG() {
   const container = document.getElementById('graph');
   const svgEl = container.querySelector('svg');
-  if (!svgEl) return alert('娌℃湁鍙鍑虹殑鍥捐〃');
+  if (!svgEl) return alert('没有可导出的图表');
   const serializer = new XMLSerializer();
   const svgStr = serializer.serializeToString(svgEl);
   const canvas = document.createElement('canvas');
@@ -1091,7 +1098,7 @@ function exportPNG() {
 
 function exportSVG() {
   const svgEl = document.getElementById('graph').querySelector('svg');
-  if (!svgEl) return alert('娌℃湁鍙鍑虹殑鍥捐〃');
+  if (!svgEl) return alert('没有可导出的图表');
   const serializer = new XMLSerializer();
   let svgStr = serializer.serializeToString(svgEl);
   svgStr = svgStr.replace(/&nbsp;/g, '&#160;');
@@ -1099,7 +1106,7 @@ function exportSVG() {
 }
 
 function exportJSON() {
-  if (datasets.length === 0) return alert('娌℃湁鍙鍑虹殑鏁版嵁');
+  if (datasets.length === 0) return alert('没有可导出的数据');
   const data = datasets.map(ds => ({
     name: ds.name,
     color: ds.color,
