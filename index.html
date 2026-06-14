@@ -644,11 +644,7 @@ function detectAxes(ctx, cx, cy, size) {
   // 聚类找到主要的轴线角度
   const clusters = [];
   if (angles.length === 0) {
-    //  fallback: 假设7维
-    for (let i = 0; i < 7; i++) {
-      clusters.push([i * 360 / 7 - 90]);
-    }
-    return clusters.map(c => ({ angle: c[0], confidence: 0.5 }));
+    return [];
   }
 
   let currentCluster = [angles[0]];
@@ -669,15 +665,6 @@ function detectAxes(ctx, cx, cy, size) {
       angle: c.reduce((a, b) => a + b, 0) / c.length,
       confidence: Math.min(1, c.length / 20)
     }));
-
-  // 如果检测到的维度太少，用常见维度数 fallback
-  if (validClusters.length < 3) {
-    const fallbackCount = 7;
-    return Array.from({length: fallbackCount}, (_, i) => ({
-      angle: i * 360 / fallbackCount - 90,
-      confidence: 0.3
-    }));
-  }
 
   return validClusters;
 }
